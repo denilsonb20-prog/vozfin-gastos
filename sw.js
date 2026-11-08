@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v15-menu-tres-pontos-instalar';
+const CACHE_NAME = 'vozfin-v16-menu-suspenso-completo';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
