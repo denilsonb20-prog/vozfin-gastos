@@ -13,6 +13,11 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icon-512.svg">
   <title>VozFin — Controle Financeiro por Voz</title>
+  <!-- Biblioteca Excel SheetJS (Download .xlsx no celular com 1 clique) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Firebase SDK Compat v10 (Nuvem Google Firestore) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
@@ -73,6 +78,12 @@
       </div>
 
       <div class="flex items-center gap-1">
+                  <button onclick="baixarPlanilhaExcel()" title="Baixar dados em Excel (.xlsx)" class="text-[11px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-inner)] hover:bg-slate-700 transition flex items-center gap-1 font-semibold text-emerald-400">
+            <span>📥</span> <span>Excel</span>
+          </button>
+          <button onclick="abrirModalFirebase()" title="Configurar Banco na Nuvem Google" class="text-[11px] px-2.5 py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition flex items-center gap-1 font-semibold text-amber-300">
+            <span>☁️</span> <span>Nuvem</span>
+          </button>
         <button onclick="sincronizarTotalComServidor()" class="text-[11px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-inner)] hover:opacity-80 flex items-center gap-1 text-emerald-400 font-bold" title="Sincronizar agora">
           <span>🔄</span> <span>Sync</span>
         </button>
@@ -1241,6 +1252,19 @@
       renderizarOsDoisGraficosPizza();
       atualizarAlertaPreview();
 
+      // 4.1 Grava direto no Google Firestore se conectado
+      if (dbFirestore) {
+        try {
+          dbFirestore.collection("lancamentos").doc(String(novo.id)).set(novo).then(() => {
+            removerPendente(novo.id);
+            const agoraH = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+            atualizarStatusSync(`Google Nuvem OK (${agoraH})`, true);
+          }).catch(err => {
+            console.warn("Aviso Firestore offline:", err);
+          });
+        } catch(e) {}
+      }
+
       // 5. Envia para o servidor e grava na planilha do Google Drive
       atualizarStatusSync("Gravando no Google Drive...", false);
       const res = await chamarAPI("/lancamentos", {
@@ -1356,6 +1380,15 @@
       renderizarTetos();
       renderizarExtrato();
       renderizarOsDoisGraficosPizza();
+
+      // 5.1 Exclui do Google Firestore se conectado
+      if (dbFirestore) {
+        try {
+          dbFirestore.collection("lancamentos").doc(String(idStr)).delete().catch(e => {
+            console.warn("Aviso exclusao Firestore offline:", e);
+          });
+        } catch(e) {}
+      }
 
       // 6. Exclui na planilha do Excel via backend imediatamente
       const payloadExclusao = {
@@ -1581,6 +1614,48 @@
       localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
       localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
       localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
+
+      if (dbFirestore) {
+        try {
+          const batch = dbFirestore.batch();
+          const docHist = dbFirestore.collection("historico_meses").doc();
+          batch.set(docHist, {
+            mes_referencia: mesRef,
+            total_receitas: rec,
+            total_despesas: desp,
+            saldo_final: saldo,
+            total_pix: pix,
+            total_credito: cred,
+            total_debito: deb,
+            total_va: va,
+            qtd_itens: snapshot.qtdLancamentos,
+            data_fechamento: new Date().toISOString()
+          });
+
+          // Se houve virada de fatura, adiciona ela
+          if (cred > 0 && lancamentos.length > 0) {
+            const faturaRef = dbFirestore.collection("lancamentos").doc(String(lancamentos[0].id));
+            batch.set(faturaRef, lancamentos[0]);
+          }
+
+          // Limpa itens antigos do Firestore
+          dbFirestore.collection("lancamentos").get().then(snap => {
+            const b = dbFirestore.batch();
+            snap.forEach(d => {
+              if (cred > 0 && lancamentos.length > 0 && String(d.id) === String(lancamentos[0].id)) {
+                // mantém a fatura já paga
+              } else {
+                b.delete(d.ref);
+              }
+            });
+            b.commit();
+          });
+
+          batch.commit();
+        } catch(e) {
+          console.warn("Aviso corte Firestore:", e);
+        }
+      }
 
       await chamarAPI("/corte", {
         method: "POST",
@@ -2159,8 +2234,392 @@
       }
     }
 
+
+    // =========================================================================
+    // DADOS INICIAIS DA PLANILHA (MIGRAÇÃO GARANTIDA DE 17 REGISTROS LEGÍTIMOS)
+    // =========================================================================
+    const DADOS_INICIAIS_MIGRACAO = [
+  {
+    "id": 25,
+    "data": "08/11/2026, 13:31",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "OUTROS GASTOS",
+    "descricao": "aro 10",
+    "formaPagamento": "PIX",
+    "valor": 10.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 26,
+    "data": "08/11/2026, 13:31",
+    "mesAno": "11/2026",
+    "tipo": "Receita",
+    "categoria": "SALÁRIO",
+    "descricao": "Salário Recebido",
+    "formaPagamento": "PIX",
+    "valor": 10250.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 27,
+    "data": "08/11/2026, 13:31",
+    "mesAno": "11/2026",
+    "tipo": "Receita",
+    "categoria": "VALE ALIMENTAÇÃO",
+    "descricao": "Recarga Vale Alimentação",
+    "formaPagamento": "Vale Alimentação",
+    "valor": 400.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 28,
+    "data": "08/11/2026, 13:32",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "CARTÃO",
+    "descricao": "Gasto no Cartão de Crédito",
+    "formaPagamento": "Cartão de Crédito",
+    "valor": 2100.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 29,
+    "data": "08/11/2026, 13:33",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "ALUGUEL",
+    "descricao": "Aluguel Mensal",
+    "formaPagamento": "PIX",
+    "valor": 1535.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 30,
+    "data": "08/11/2026, 13:33",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "PARCELA CARRO",
+    "descricao": "Parcela do Carro",
+    "formaPagamento": "PIX",
+    "valor": 1413.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 31,
+    "data": "08/11/2026, 13:33",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "POUPANÇA",
+    "descricao": "Poupança / Reserva",
+    "formaPagamento": "PIX",
+    "valor": 2900.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 32,
+    "data": "08/11/2026, 13:33",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "PLANO DE SAUDE",
+    "descricao": "Plano de Saúde",
+    "formaPagamento": "PIX",
+    "valor": 450.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 33,
+    "data": "08/11/2026, 13:34",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "CONTA DE LUZ",
+    "descricao": "Conta de Luz",
+    "formaPagamento": "PIX",
+    "valor": 89.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 34,
+    "data": "08/11/2026, 13:34",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "CONTA DE AGUA",
+    "descricao": "Conta de Água",
+    "formaPagamento": "PIX",
+    "valor": 68.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 35,
+    "data": "08/11/2026, 13:34",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "CONTA DE INTERNET",
+    "descricao": "Conta de Internet",
+    "formaPagamento": "PIX",
+    "valor": 110.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 36,
+    "data": "08/11/2026, 13:34",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "SEGURO MOTO/CARRO",
+    "descricao": "r$ 40 segura moto pix",
+    "formaPagamento": "PIX",
+    "valor": 40.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 37,
+    "data": "08/11/2026, 13:35",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "CONTA TELEFONE",
+    "descricao": "Conta de Telefone / Celular",
+    "formaPagamento": "PIX",
+    "valor": 30.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 39,
+    "data": "08/11/2026, 13:35",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "SUPERMERCADO",
+    "descricao": "Recarga Vale Alimentação",
+    "formaPagamento": "Vale Alimentação",
+    "valor": 100.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 40,
+    "data": "08/11/2026, 13:35",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "OUTROS GASTOS",
+    "descricao": "r$ 300 outros gastos pics",
+    "formaPagamento": "PIX",
+    "valor": 300.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 41,
+    "data": "08/11/2026, 13:37",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "OUTROS GASTOS",
+    "descricao": "89 pics outros gastos",
+    "formaPagamento": "PIX",
+    "valor": 89.0,
+    "origem": "Voz Mobile"
+  },
+  {
+    "id": 43,
+    "data": "08/11/2026, 13:53",
+    "mesAno": "11/2026",
+    "tipo": "Despesa",
+    "categoria": "CARTÃO",
+    "descricao": "Fatura Já Paga (Mês Anterior)",
+    "formaPagamento": "PIX",
+    "valor": 3000.0,
+    "origem": "Voz Mobile"
+  }
+];
+
+    // =========================================================================
+    // INTEGRAÇÃO COM GOOGLE FIREBASE FIRESTORE (NUVEM 24/7 SEM DEPENDÊNCIA DO PC)
+    // =========================================================================
+    let dbFirestore = null;
+    let unsubscribeFirestore = null;
+
+    function abrirModalFirebase() {
+      const modal = document.getElementById("modal-firebase");
+      if (modal) {
+        modal.classList.remove("hidden");
+        const salvo = localStorage.getItem("vozfin_firebase_config");
+        if (salvo) {
+          try {
+            document.getElementById("input-firebase-config").value = JSON.stringify(JSON.parse(salvo), null, 2);
+          } catch(e) {
+            document.getElementById("input-firebase-config").value = salvo;
+          }
+        }
+      }
+    }
+
+    function fecharModalFirebase() {
+      const modal = document.getElementById("modal-firebase");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function extrairObjetoFirebase(texto) {
+      try {
+        return JSON.parse(texto);
+      } catch(e) {}
+      try {
+        const match = texto.match(/\{[\s\S]*\}/);
+        if (match) {
+          const clean = match[0]
+            .replace(/([a-zA-Z0-9_]+):/g, '"$1":')
+            .replace(/'/g, '"')
+            .replace(/,\s*\}/, "}");
+          return JSON.parse(clean);
+        }
+      } catch(e) {}
+      return null;
+    }
+
+    async function salvarConfigFirebase() {
+      const raw = document.getElementById("input-firebase-config").value.trim();
+      if (!raw) {
+        alert("Cole o bloco firebaseConfig antes de salvar.");
+        return;
+      }
+      const config = extrairObjetoFirebase(raw);
+      if (!config || !config.projectId) {
+        alert("Formato inválido. Certifique-se de colar o bloco com apiKey e projectId.");
+        return;
+      }
+      localStorage.setItem("vozfin_firebase_config", JSON.stringify(config));
+      fecharModalFirebase();
+      exibirToast("Conectando ao Google Firestore...");
+      const ok = inicializarFirebase(config);
+      if (ok) {
+        exibirToast("🟢 Conectado ao Google Firestore!");
+      }
+    }
+
+    function inicializarFirebase(config) {
+      if (!config || !config.projectId || typeof firebase === "undefined") return false;
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+        dbFirestore = firebase.firestore();
+        try {
+          dbFirestore.enablePersistence({ synchronizeTabs: true }).catch(err => {
+            console.warn("Aviso persistência offline Firestore:", err.code);
+          });
+        } catch(e) {}
+        conectarOuvinteFirestore();
+        return true;
+      } catch(err) {
+        console.error("Erro ao inicializar Firebase Firestore:", err);
+        return false;
+      }
+    }
+
+    function conectarOuvinteFirestore() {
+      if (!dbFirestore) return;
+      if (unsubscribeFirestore) unsubscribeFirestore();
+
+      atualizarStatusSync("Conectando Firestore...", false);
+
+      unsubscribeFirestore = dbFirestore.collection("lancamentos").onSnapshot(snapshot => {
+        if (snapshot.empty) {
+          console.log("Firestore vazio. Iniciando migração dos 17 dados iniciais...");
+          migrarDadosLocaisParaFirestore();
+          return;
+        }
+        const listaDocs = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          listaDocs.push(data);
+        });
+        listaDocs.sort((a, b) => Number(b.id) - Number(a.id));
+        lancamentos = listaDocs;
+
+        // Mantém cache local sincronizado
+        localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+        localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
+
+        atualizarKPIs();
+        renderizarTetos();
+        renderizarExtrato();
+        renderizarOsDoisGraficosPizza();
+        atualizarAbaMesesAnteriores();
+
+        const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        atualizarStatusSync(`Google Nuvem OK (${hora})`, true);
+      }, err => {
+        console.warn("Erro no ouvinte do Firestore (usando cache local):", err);
+        atualizarStatusSync("Modo Local / Cache", false);
+      });
+    }
+
+    async function migrarDadosLocaisParaFirestore() {
+      if (!dbFirestore) return;
+      try {
+        const batch = dbFirestore.batch();
+        const base = (Array.isArray(lancamentos) && lancamentos.length > 0) ? lancamentos : DADOS_INICIAIS_MIGRACAO;
+        base.forEach(item => {
+          const docRef = dbFirestore.collection("lancamentos").doc(String(item.id));
+          batch.set(docRef, item);
+        });
+        await batch.commit();
+        console.log("Migração de", base.length, "itens concluída com sucesso no Firestore!");
+      } catch(e) {
+        console.error("Erro na migração para o Firestore:", e);
+      }
+    }
+
+    // =========================================================================
+    // EXPORTAÇÃO COMPLETA PARA EXCEL (.XLSX) DIRETO NO NAVEGADOR
+    // =========================================================================
+    function baixarPlanilhaExcel() {
+      if (typeof XLSX === "undefined") {
+        alert("Aguarde a biblioteca Excel carregar (verifique sua conexão).");
+        return;
+      }
+      const dadosTabela = [
+        ["ID", "Data / Hora", "Mês/Ano", "Tipo", "Categoria", "Descrição Falada (Voz)", "Forma de Pagamento", "Valor (R$)", "Origem"]
+      ];
+      const listaExportar = (Array.isArray(lancamentos) && lancamentos.length > 0) ? lancamentos : DADOS_INICIAIS_MIGRACAO;
+      listaExportar.forEach(l => {
+        dadosTabela.push([
+          Number(l.id) || 0,
+          String(l.data || ""),
+          String(l.mesAno || ""),
+          String(l.tipo || "Despesa"),
+          String(l.categoria || ""),
+          String(l.descricao || ""),
+          String(l.formaPagamento || ""),
+          Number(l.valor) || 0,
+          String(l.origem || "Voz Mobile")
+        ]);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(dadosTabela);
+      ws["!cols"] = [
+        { wch: 8 },
+        { wch: 20 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 22 },
+        { wch: 32 },
+        { wch: 20 },
+        { wch: 16 },
+        { wch: 18 }
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, "Lancamentos");
+      const hoje = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `CONTROLE_FINANCEIRO_${hoje}.xlsx`);
+      exibirToast("📥 Planilha Excel gerada com sucesso!");
+    }
+
     // INICIALIZAÇÃO
     window.onload = () => {
+      // Inicializa Google Firebase se configurado
+      const configSalva = localStorage.getItem("vozfin_firebase_config");
+      if (configSalva) {
+        try {
+          inicializarFirebase(JSON.parse(configSalva));
+        } catch(e) {}
+      }
+
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
@@ -2176,5 +2635,31 @@
       }, 15000);
     };
   </script>
+
+  <!-- MODAL DE CONFIGURAÇÃO DO FIREBASE (NUVEM GOOGLE) -->
+  <div id="modal-firebase" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-3">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div class="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">☁️</span>
+          <h3 class="font-extrabold text-sm text-slate-100">Banco na Nuvem Google</h3>
+        </div>
+        <button onclick="fecharModalFirebase()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Cole abaixo a configuração do seu projeto Firebase (bloco <code class="bg-slate-800 px-1 py-0.5 rounded text-amber-400">firebaseConfig</code>). Ao salvar, os dados serão gravados diretamente nos servidores do Google e funcionarão 24h mesmo com o PC desligado.
+      </p>
+      <textarea id="input-firebase-config" rows="6" placeholder="const firebaseConfig = {&#10;  apiKey: '...',&#10;  projectId: '...'&#10;};" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 font-mono focus:border-amber-500 focus:outline-none"></textarea>
+      <div class="flex items-center gap-2">
+        <button onclick="salvarConfigFirebase()" class="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold rounded-xl text-xs transition shadow-lg">
+          Salvar e Conectar Nuvem
+        </button>
+        <button onclick="fecharModalFirebase()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-xl text-xs transition">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
