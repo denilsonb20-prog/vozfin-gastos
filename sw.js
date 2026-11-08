@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v10-corte-automatico-cartao';
+const CACHE_NAME = 'vozfin-v11-firebase-firestore-excel';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
