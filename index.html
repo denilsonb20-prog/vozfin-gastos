@@ -148,42 +148,62 @@
       </div>
       </div>
 
-      <!-- 4 Cards de Formas de Pagamento -->
+      <!-- 4 Cards de Formas de Pagamento (Clicáveis para abrir os custos atrelados!) -->
       <div class="grid grid-cols-2 gap-2 text-xs">
-        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+        <div onclick="abrirCustosFormaPagamento('PIX')" class="bg-[var(--card-inner)] p-2.5 rounded-xl border border-[var(--border)] hover:border-teal-400/60 hover:bg-teal-500/10 cursor-pointer active:scale-95 transition-all shadow-xs group">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="font-bold text-teal-400">💠 PIX</span>
-            <span id="pct-pix" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
+            <span class="font-bold text-teal-400 flex items-center gap-1">
+              <span>💠</span> <span>PIX</span>
+            </span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300 font-bold group-hover:bg-teal-500/30">Ver custos ↗</span>
           </div>
-          <div class="text-sm font-black font-mono mt-0.5" id="val-pix">R$ 0,00</div>
-          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 7.500</div>
+          <div class="text-sm font-black font-mono mt-1 text-[var(--foreground)]" id="val-pix">R$ 0,00</div>
+          <div class="flex items-center justify-between text-[10px] text-[var(--muted-foreground)] mt-0.5">
+            <span>Teto: R$ 7.500</span>
+            <span id="pct-pix" class="font-mono font-bold text-teal-400">0%</span>
+          </div>
         </div>
 
-        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+        <div onclick="abrirCustosFormaPagamento('Cartão de Crédito')" class="bg-[var(--card-inner)] p-2.5 rounded-xl border border-[var(--border)] hover:border-purple-400/60 hover:bg-purple-500/10 cursor-pointer active:scale-95 transition-all shadow-xs group">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="font-bold text-purple-400">💳 Crédito</span>
-            <span id="pct-credito" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
+            <span class="font-bold text-purple-400 flex items-center gap-1">
+              <span>💳</span> <span>Crédito</span>
+            </span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 font-bold group-hover:bg-purple-500/30">Ver custos ↗</span>
           </div>
-          <div class="text-sm font-black font-mono mt-0.5" id="val-credito">R$ 0,00</div>
-          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 2.700</div>
+          <div class="text-sm font-black font-mono mt-1 text-[var(--foreground)]" id="val-credito">R$ 0,00</div>
+          <div class="flex items-center justify-between text-[10px] text-[var(--muted-foreground)] mt-0.5">
+            <span>Teto: R$ 2.700</span>
+            <span id="pct-credito" class="font-mono font-bold text-purple-400">0%</span>
+          </div>
         </div>
 
-        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+        <div onclick="abrirCustosFormaPagamento('Cartão de Débito')" class="bg-[var(--card-inner)] p-2.5 rounded-xl border border-[var(--border)] hover:border-sky-400/60 hover:bg-sky-500/10 cursor-pointer active:scale-95 transition-all shadow-xs group">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="font-bold text-sky-400">🏧 Débito</span>
-            <span id="pct-debito" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
+            <span class="font-bold text-sky-400 flex items-center gap-1">
+              <span>🏧</span> <span>Débito</span>
+            </span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-md bg-sky-500/20 text-sky-300 font-bold group-hover:bg-sky-500/30">Ver custos ↗</span>
           </div>
-          <div class="text-sm font-black font-mono mt-0.5" id="val-debito">R$ 0,00</div>
-          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 1.500</div>
+          <div class="text-sm font-black font-mono mt-1 text-[var(--foreground)]" id="val-debito">R$ 0,00</div>
+          <div class="flex items-center justify-between text-[10px] text-[var(--muted-foreground)] mt-0.5">
+            <span>Teto: R$ 1.500</span>
+            <span id="pct-debito" class="font-mono font-bold text-sky-400">0%</span>
+          </div>
         </div>
 
-        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+        <div onclick="abrirCustosFormaPagamento('Vale Alimentação')" class="bg-[var(--card-inner)] p-2.5 rounded-xl border border-[var(--border)] hover:border-amber-400/60 hover:bg-amber-500/10 cursor-pointer active:scale-95 transition-all shadow-xs group">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="font-bold text-amber-400">🍽️ Vale Alim.</span>
-            <span id="pct-va" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
+            <span class="font-bold text-amber-400 flex items-center gap-1">
+              <span>🍽️</span> <span>Vale Alim.</span>
+            </span>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold group-hover:bg-amber-500/30">Ver custos ↗</span>
           </div>
-          <div class="text-sm font-black font-mono mt-0.5" id="val-va">R$ 0,00</div>
-          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 690</div>
+          <div class="text-sm font-black font-mono mt-1 text-[var(--foreground)]" id="val-va">R$ 0,00</div>
+          <div class="flex items-center justify-between text-[10px] text-[var(--muted-foreground)] mt-0.5">
+            <span>Teto: R$ 690</span>
+            <span id="pct-va" class="font-mono font-bold text-amber-400">0%</span>
+          </div>
         </div>
       </div>
     </section>
@@ -431,6 +451,41 @@
         </select>
       </div>
       <div id="conteudo-mes-historico"></div>
+    </div>
+
+        <!-- MODAL DE DETALHES POR FORMA DE PAGAMENTO (CUSTOS ATRELADOS) -->
+    <div id="modal-detalhes-forma" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
+      <div class="bg-[var(--card)] border-2 border-[var(--border)] rounded-2xl max-w-sm w-full p-4 space-y-3 shadow-2xl flex flex-col max-h-[85vh]">
+        
+        <!-- Topo do Modal -->
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5 shrink-0">
+          <div class="flex items-center gap-2.5">
+            <div id="forma-detalhes-icone-box" class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center text-xl font-bold border border-purple-500/30 shrink-0">
+              💳
+            </div>
+            <div>
+              <h3 id="forma-detalhes-titulo" class="font-extrabold text-sm text-[var(--foreground)]">Custos no Cartão de Crédito</h3>
+              <p id="forma-detalhes-sub" class="text-[10px] text-[var(--muted-foreground)]">3 lançamentos • Total: R$ 2.086,20</p>
+            </div>
+          </div>
+          <button onclick="fecharModalDetalhesForma()" class="text-xs px-2.5 py-1 rounded-xl border border-[var(--border)] hover:bg-[var(--card-inner)] active:scale-95">✕</button>
+        </div>
+
+        <!-- Lista Rolável com os Lançamentos dessa Forma -->
+        <div id="forma-detalhes-lista" class="overflow-y-auto space-y-2 pr-1 flex-1 text-xs">
+        </div>
+
+        <!-- Rodapé do Modal -->
+        <div class="flex items-center justify-between pt-2 border-t border-[var(--border)] shrink-0 text-xs">
+          <button onclick="irParaExtratoFiltrado()" class="px-3 py-1.5 rounded-xl bg-slate-800 text-[var(--foreground)] border border-[var(--border)] hover:bg-slate-700 font-semibold text-[11px] active:scale-95 flex items-center gap-1">
+            <span>📋</span> <span>Abrir no Extrato</span>
+          </button>
+          <button onclick="fecharModalDetalhesForma()" class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold active:scale-95">
+            Fechar
+          </button>
+        </div>
+
+      </div>
     </div>
 
     <!-- MODAL DE EDIÇÃO DE LANÇAMENTO (VALOR E CATEGORIA) -->
@@ -1145,6 +1200,105 @@
       atualizarStatusSync("Sincronizado ✓", true);
     }
 
+        // =========================================================================
+    // VISUALIZAÇÃO DOS CUSTOS ATRELADOS AO TIPO DE PAGAMENTO CLICADO
+    // =========================================================================
+    let formaAtualDetalhes = null;
+
+    function abrirCustosFormaPagamento(forma) {
+      formaAtualDetalhes = forma;
+      const modal = document.getElementById("modal-detalhes-forma");
+      const titulo = document.getElementById("forma-detalhes-titulo");
+      const iconeBox = document.getElementById("forma-detalhes-icone-box");
+      const sub = document.getElementById("forma-detalhes-sub");
+      const lista = document.getElementById("forma-detalhes-lista");
+
+      const mapaInfo = {
+        "PIX": { icone: "💠", corTexto: "text-teal-300", bg: "bg-teal-500/20", border: "border-teal-500/40" },
+        "Cartão de Crédito": { icone: "💳", corTexto: "text-purple-300", bg: "bg-purple-500/20", border: "border-purple-500/40" },
+        "Cartão de Débito": { icone: "🏧", corTexto: "text-sky-300", bg: "bg-sky-500/20", border: "border-sky-500/40" },
+        "Vale Alimentação": { icone: "🍽️", corTexto: "text-amber-300", bg: "bg-amber-500/20", border: "border-amber-500/40" }
+      };
+
+      const info = mapaInfo[forma] || { icone: "💳", corTexto: "text-purple-300", bg: "bg-purple-500/20", border: "border-purple-500/40" };
+      iconeBox.innerHTML = info.icone;
+      iconeBox.className = `w-10 h-10 rounded-xl ${info.bg} ${info.corTexto} flex items-center justify-center text-xl font-bold border ${info.border} shrink-0`;
+      titulo.innerText = `Custos no ${forma}`;
+
+      // Filtra lançamentos correspondentes (com tolerância a acentos)
+      const fNorm = forma.toLowerCase();
+      const itens = lancamentos.filter(l => {
+        const lf = (l.formaPagamento || "").toLowerCase();
+        if (fNorm.includes("crédito") || fNorm.includes("credito")) return lf.includes("crédito") || lf.includes("credito");
+        if (fNorm.includes("débito") || fNorm.includes("debito")) return lf.includes("débito") || lf.includes("debito");
+        if (fNorm.includes("vale")) return lf.includes("vale");
+        if (fNorm.includes("pix")) return lf.includes("pix");
+        return lf === fNorm;
+      });
+
+      const total = itens.reduce((a, b) => a + (b.valor || 0), 0);
+      sub.innerText = `${itens.length} lançamento(s) atrelado(s) • Total: ${formatarMoeda(total)}`;
+
+      if (!itens.length) {
+        lista.innerHTML = `
+          <div class="text-center py-8 text-[var(--muted-foreground)] space-y-2">
+            <span class="text-3xl block">${info.icone}</span>
+            <p class="text-xs">Nenhum custo registrado no ${forma} neste mês.</p>
+          </div>
+        `;
+      } else {
+        lista.innerHTML = itens.map(item => {
+          const isRec = item.tipo === "Receita";
+          return `
+            <div class="p-2.5 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] flex items-center justify-between gap-2 text-xs hover:border-[var(--border)] transition-all">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg ${isRec ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center font-bold text-xs shrink-0">
+                  ${isRec ? '↗' : '↘'}
+                </div>
+                <div>
+                  <div class="font-bold text-[12px] text-[var(--foreground)]">${item.descricao || item.categoria}</div>
+                  <div class="text-[10px] text-[var(--muted-foreground)]">
+                    ${item.data} • <span class="font-semibold text-teal-300">${item.categoria}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="font-mono font-bold text-xs ${isRec ? 'text-emerald-400' : 'text-rose-400'}">
+                  ${isRec ? '+' : '-'}${formatarMoeda(item.valor)}
+                </span>
+                <button onclick="abrirModalEditarLancamento(${item.id})" class="text-xs px-2 py-1 rounded-lg bg-slate-800 text-blue-400 border border-[var(--border)] hover:bg-slate-700 active:scale-95" title="Editar">✏️</button>
+                <button onclick="excluirLancamentoDeModal(${item.id})" class="text-xs px-1.5 py-1 rounded-lg text-rose-400 hover:bg-rose-500/10 active:scale-95" title="Excluir">🗑️</button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      modal.classList.remove("hidden");
+    }
+
+    function fecharModalDetalhesForma() {
+      const modal = document.getElementById("modal-detalhes-forma");
+      if (modal) modal.classList.add("hidden");
+      formaAtualDetalhes = null;
+    }
+
+    function irParaExtratoFiltrado() {
+      const forma = formaAtualDetalhes;
+      fecharModalDetalhesForma();
+      mudarAba("extrato");
+      if (forma) {
+        filtrarExtrato(forma);
+      }
+    }
+
+    async function excluirLancamentoDeModal(id) {
+      await excluirLancamento(id);
+      if (formaAtualDetalhes) {
+        abrirCustosFormaPagamento(formaAtualDetalhes);
+      }
+    }
+
     function abrirModalEditarLancamento(id) {
       const item = lancamentos.find(l => l.id == id);
       if (!item) return;
@@ -1355,14 +1509,15 @@
         `;
 
         legendHtml += `
-          <div class="flex items-center justify-between py-0.5 border-b border-[var(--border)] last:border-0 text-[11px]">
+          <div onclick="abrirCustosFormaPagamento('${d.nome}')" class="flex items-center justify-between py-1 border-b border-[var(--border)] last:border-0 text-[11px] cursor-pointer hover:bg-[var(--card-inner)] rounded-lg px-1.5 active:scale-95 transition-all group">
             <div class="flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.cor}"></span>
-              <span class="font-bold">${d.icone} ${d.nome}</span>
+              <span class="font-bold text-[var(--foreground)]">${d.icone} ${d.nome}</span>
             </div>
-            <div class="font-mono">
+            <div class="font-mono flex items-center gap-1">
               <strong>${formatarMoeda(d.valor)}</strong>
               <span class="text-[var(--muted-foreground)] text-[10px]">(${(pct * 100).toFixed(0)}%)</span>
+              <span class="text-[10px] text-purple-400 group-hover:translate-x-0.5 transition-transform">↗</span>
             </div>
           </div>
         `;
@@ -1418,14 +1573,15 @@
         `;
 
         legendHtml += `
-          <div class="flex items-center justify-between py-0.5 border-b border-[var(--border)] last:border-0 text-[11px]">
+          <div onclick="abrirCustosFormaPagamento('${d.nome}')" class="flex items-center justify-between py-1 border-b border-[var(--border)] last:border-0 text-[11px] cursor-pointer hover:bg-[var(--card-inner)] rounded-lg px-1.5 active:scale-95 transition-all group">
             <div class="flex items-center gap-1.5">
               <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.cor}"></span>
-              <span class="font-bold">${d.icone} ${d.nome}</span>
+              <span class="font-bold text-[var(--foreground)]">${d.icone} ${d.nome}</span>
             </div>
-            <div class="font-mono">
+            <div class="font-mono flex items-center gap-1">
               <strong>${formatarMoeda(d.valor)}</strong>
               <span class="text-[var(--muted-foreground)] text-[10px]">(${(pct * 100).toFixed(0)}%)</span>
+              <span class="text-[10px] text-purple-400 group-hover:translate-x-0.5 transition-transform">↗</span>
             </div>
           </div>
         `;
