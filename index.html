@@ -1244,9 +1244,31 @@
       renderizarExtrato();
       renderizarOsDoisGraficosPizza();
 
-      // 5. Exclui na planilha do Excel via backend
+      // 5. Exclui na planilha do Excel via backend imediatamente (via DELETE e POST robusto)
+      const payloadExclusao = {
+        id: idStr,
+        valor: itemAlvo ? itemAlvo.valor : 0,
+        descricao: itemAlvo ? itemAlvo.descricao : "",
+        categoria: itemAlvo ? itemAlvo.categoria : ""
+      };
+
       await chamarAPI(`/lancamentos/${idStr}`, { method: "DELETE" });
-      atualizarStatusSync("Removido ✓", true);
+      const resPost = await chamarAPI("/lancamentos/excluir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadExclusao)
+      });
+
+      if (resPost && resPost.status === "ok" && Array.isArray(resPost.lancamentos)) {
+        lancamentos = resPost.lancamentos;
+        localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+        atualizarKPIs();
+        renderizarTetos();
+        renderizarExtrato();
+        renderizarOsDoisGraficosPizza();
+      }
+
+      atualizarStatusSync("Apagado da Planilha ✓", true);
     }
 
         // =========================================================================
