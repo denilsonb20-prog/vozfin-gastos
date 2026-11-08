@@ -100,6 +100,29 @@
       </div>
     </section>
 
+
+    <!-- BANNER DE RECUPERAÇÃO DE DADOS DO APARELHO -->
+    <div id="banner-recuperacao" class="bg-gradient-to-r from-indigo-950/90 via-slate-900 to-indigo-950/90 border border-indigo-500/40 rounded-2xl p-3 shadow-md space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0 border border-indigo-500/30">
+            📦
+          </div>
+          <div>
+            <div class="text-xs font-bold text-indigo-200" id="titulo-banner-rec">Lançamentos no Celular</div>
+            <div class="text-[10px] text-slate-400" id="sub-banner-rec">Seus dados locais são preservados e sincronizados com a planilha</div>
+          </div>
+        </div>
+        <button onclick="acaoRestaurarManualCelular(true)" class="px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shrink-0 transition-all shadow flex items-center gap-1">
+          <span>🔄</span> <span>Resgatar Aparelho</span>
+        </button>
+      </div>
+      <div id="toast-recuperacao" class="hidden text-[11px] p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold flex items-center justify-between">
+        <span id="toast-recuperacao-msg"></span>
+        <button onclick="document.getElementById('toast-recuperacao').classList.add('hidden')" class="text-xs px-1 text-slate-400">✕</button>
+      </div>
+    </div>
+
     <!-- PAINEL PRINCIPAL: SALDO LIVRE EM CONTA & FORMAS DE PAGAMENTO -->
     <section class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 space-y-2.5 shadow-sm">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
@@ -597,43 +620,162 @@
       return (Number(val) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
-    function carregarMetasLocais() {
-      const salvas = localStorage.getItem("vozfin_metas_14");
-      if (salvas) {
-        try {
-          const dict = JSON.parse(salvas);
-          return CATEGORIAS_OFICIAIS.map(c => ({
-            ...c,
-            teto: dict[c.nome] !== undefined ? parseFloat(dict[c.nome]) : c.teto
-          }));
-        } catch(e) {}
+        function carregarMetasLocais() {
+      const chavesMetas = ["vozfin_metas_14", "vozfin_metas_v4", "vozfin_metas_v3", "vozfin_metas_12"];
+      for (const k of chavesMetas) {
+        const salvas = localStorage.getItem(k);
+        if (salvas) {
+          try {
+            const dict = JSON.parse(salvas);
+            if (dict && typeof dict === "object") {
+              return CATEGORIAS_OFICIAIS.map(c => ({
+                ...c,
+                teto: dict[c.nome] !== undefined ? parseFloat(dict[c.nome]) : c.teto
+              }));
+            }
+          } catch(e) {}
+        }
       }
       return JSON.parse(JSON.stringify(CATEGORIAS_OFICIAIS));
     }
 
-    function carregarLancamentosLocais() {
-      const dados = localStorage.getItem("vozfin_lancamentos_14");
-      if (dados) {
+    function resgatarTodosLancamentosDoAparelho() {
+      const chaves = [
+        "vozfin_lancamentos_14",
+        "vozfin_lancamentos_v4",
+        "vozfin_lancamentos_v3",
+        "vozfin_lancamentos_v2",
+        "vozfin_lancamentos",
+        "vozfin_fila_v2",
+        "vozfin_gastos",
+        "vozfin_backup_seguro"
+      ];
+
+      // Varre dinamicamente qualquer outra chave existente no localStorage
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && !chaves.includes(k) && (k.toLowerCase().includes("lanc") || k.toLowerCase().includes("gasto") || k.toLowerCase().includes("item"))) {
+            chaves.push(k);
+          }
+        }
+      } catch (e) {}
+
+      const consolidados = [];
+      const assinaturas = new Set();
+      const nomesValidos = CATEGORIAS_OFICIAIS.map(c => c.nome);
+
+      for (const k of chaves) {
         try {
-          const arr = JSON.parse(dados);
-          const nomesValidos = CATEGORIAS_OFICIAIS.map(c => c.nome);
-          return arr.map(item => {
-            if (item.tipo === "Despesa" && !nomesValidos.includes(item.categoria)) {
-              item.categoria = "OUTROS GASTOS";
+          const bruto = localStorage.getItem(k);
+          if (!bruto) continue;
+          const parsed = JSON.parse(bruto);
+          const lista = Array.isArray(parsed) ? parsed : (parsed.itens || parsed.lancamentos || []);
+          for (const item of lista) {
+            if (!item || typeof item !== "object") continue;
+            const val = parseFloat(item.valor || 0);
+            if (val <= 0 && item.tipo !== "Receita") continue;
+
+            const sig = `${item.tipo || "Despesa"}|${val.toFixed(2)}|${(item.descricao || "").trim().toLowerCase()}|${(item.categoria || "").trim().toLowerCase()}`;
+            if (assinaturas.has(sig)) continue;
+            assinaturas.add(sig);
+
+            let cat = String(item.categoria || "OUTROS GASTOS").trim().toUpperCase();
+            if (cat.includes("CART")) cat = "CARTÃO";
+            else if (cat.includes("POUP")) cat = "POUPANÇA";
+            else if (cat.includes("ALUG")) cat = "ALUGUEL";
+            else if (cat.includes("PARCELA") && cat.includes("CARRO")) cat = "PARCELA CARRO";
+            else if (cat.includes("COMBUST")) cat = "COMBUSTIVEL";
+            else if (cat.includes("SAUDE") || cat.includes("SAÚDE")) cat = "PLANO DE SAUDE";
+            else if (cat.includes("LUZ") || cat.includes("ENERGIA")) cat = "CONTA DE LUZ";
+            else if (cat.includes("AGUA") || cat.includes("ÁGUA")) cat = "CONTA DE AGUA";
+            else if (cat.includes("INTERNET")) cat = "CONTA DE INTERNET";
+            else if (cat.includes("SEGURO")) cat = "SEGURO MOTO/CARRO";
+            else if (cat.includes("TELEFONE") || cat.includes("CELULAR")) cat = "CONTA TELEFONE";
+            else if (cat.includes("ALIMENTA") && !cat.includes("VALE")) cat = "ALIMENTAÇÃO";
+            else if (cat.includes("SUPERMERCADO") || cat.includes("MERCADO")) cat = "SUPERMERCADO";
+            else if (item.tipo === "Receita") {
+              if (cat.includes("VALE")) cat = "Vale Alimentação";
+              else cat = "Salário";
+            } else if (!nomesValidos.includes(cat)) {
+              cat = "OUTROS GASTOS";
             }
-            return item;
-          });
-        } catch(e) {}
+
+            consolidados.push({
+              id: item.id || (Date.now() + Math.floor(Math.random() * 10000)),
+              data: item.data || new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
+              mesAno: item.mesAno || `${(new Date().getMonth() + 1).toString().padStart(2, '0')}/${new Date().getFullYear()}`,
+              tipo: item.tipo || "Despesa",
+              categoria: cat,
+              descricao: item.descricao || cat,
+              formaPagamento: item.formaPagamento || (cat === "CARTÃO" ? "Cartão de Crédito" : "PIX"),
+              valor: val,
+              origem: item.origem || "Recuperado Celular"
+            });
+          }
+        } catch (e) {}
+      }
+
+      if (consolidados.length > 0) {
+        localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(consolidados));
+        localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(consolidados));
+        localStorage.setItem("vozfin_backup_seguro", JSON.stringify(consolidados));
+      }
+
+      return consolidados;
+    }
+
+    function carregarLancamentosLocais() {
+      return resgatarTodosLancamentosDoAparelho();
+    }
+
+    function carregarHistoricoLocal() {
+      const chavesHist = ["vozfin_historico_14", "vozfin_historico_v4", "vozfin_historico_meses"];
+      for (const k of chavesHist) {
+        const dados = localStorage.getItem(k);
+        if (dados) {
+          try {
+            const arr = JSON.parse(dados);
+            if (Array.isArray(arr) && arr.length) return arr;
+          } catch(e) {}
+        }
       }
       return [];
     }
 
-    function carregarHistoricoLocal() {
-      const dados = localStorage.getItem("vozfin_historico_14");
-      if (dados) {
-        try { return JSON.parse(dados); } catch(e) {}
+    function exibirToast(msg) {
+      const toast = document.getElementById("toast-recuperacao");
+      const msgEl = document.getElementById("toast-recuperacao-msg");
+      if (toast && msgEl) {
+        msgEl.innerText = msg;
+        toast.classList.remove("hidden");
       }
-      return [];
+    }
+
+    async function acaoRestaurarManualCelular(exibirAlerta = false) {
+      const antes = lancamentos.length;
+      const resgatados = resgatarTodosLancamentosDoAparelho();
+      lancamentos = resgatados;
+
+      atualizarKPIs();
+      renderizarTetos();
+      renderizarExtrato();
+      renderizarOsDoisGraficosPizza();
+      atualizarAbaMesesAnteriores();
+
+      if (lancamentos.length > 0) {
+        const sub = document.getElementById("sub-banner-rec");
+        if (sub) sub.innerText = `${lancamentos.length} lançamentos recuperados no celular. Sincronizando com a planilha...`;
+        exibirToast(`✓ ${lancamentos.length} lançamentos encontrados no aparelho! Gravando no Google Drive...`);
+        await sincronizarTotalComServidor();
+        if (exibirAlerta) {
+          alert(`Sucesso! ${lancamentos.length} lançamentos resgatados e salvos na planilha do Google Drive.`);
+        }
+      } else {
+        if (exibirAlerta) {
+          alert("Nenhum lançamento anterior localizado no armazenamento deste navegador.");
+        }
+      }
     }
 
     function mudarAba(aba) {
@@ -1468,21 +1610,66 @@
       }
     }
 
-    // =========================================================================
-    // SINCRONIZAÇÃO COMPLETA BIDIRECIONAL (CELULAR <-> NAVEGADOR)
+        // =========================================================================
+    // SINCRONIZAÇÃO COMPLETA BIDIRECIONAL COM PREVENÇÃO DE PERDA DE DADOS
     // =========================================================================
     async function sincronizarTotalComServidor() {
       atualizarStatusSync("Sincronizando...", false);
+
+      // Se a memória ativa estiver vazia, resgata de todas as chaves do aparelho
+      if (!lancamentos || !lancamentos.length) {
+        lancamentos = resgatarTodosLancamentosDoAparelho();
+      }
+
       const res = await chamarAPI("/lancamentos");
       if (res && res.status === "ok" && Array.isArray(res.lancamentos)) {
-        const nomesValidos = CATEGORIAS_OFICIAIS.map(c => c.nome);
-        lancamentos = res.lancamentos.map(item => {
-          if (item.tipo === "Despesa" && !nomesValidos.includes(item.categoria)) {
-            item.categoria = "OUTROS GASTOS";
+        const daPlanilha = res.lancamentos;
+
+        // CENÁRIO A: Celular possui dados, mas planilha estava zerada!
+        // Envia todos os dados do celular para o Google Drive imediatamente!
+        if (lancamentos.length > 0 && daPlanilha.length === 0) {
+          atualizarStatusSync("Salvando no Drive...", false);
+          await chamarAPI("/lancamentos/lote", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lancamentos: lancamentos })
+          });
+          const resPos = await chamarAPI("/lancamentos");
+          if (resPos && resPos.status === "ok" && Array.isArray(resPos.lancamentos) && resPos.lancamentos.length) {
+            lancamentos = resPos.lancamentos;
           }
-          return item;
-        });
+          exibirToast(`✓ ${lancamentos.length} lançamentos sincronizados no Google Drive!`);
+        }
+        // CENÁRIO B: Planilha tem lançamentos
+        // Junta os da planilha com itens do celular que porventura faltem na planilha
+        else if (daPlanilha.length > 0) {
+          const sigsPlanilha = new Set(
+            daPlanilha.map(l => `${l.tipo}|${Number(l.valor).toFixed(2)}|${(l.descricao||"").trim().toLowerCase()}|${(l.categoria||"").trim().toLowerCase()}`)
+          );
+          const faltantes = lancamentos.filter(l => 
+            !sigsPlanilha.has(`${l.tipo}|${Number(l.valor).toFixed(2)}|${(l.descricao||"").trim().toLowerCase()}|${(l.categoria||"").trim().toLowerCase()}`)
+          );
+
+          if (faltantes.length > 0) {
+            atualizarStatusSync("Atualizando Drive...", false);
+            await chamarAPI("/lancamentos/lote", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lancamentos: faltantes })
+            });
+            const resPos = await chamarAPI("/lancamentos");
+            if (resPos && resPos.status === "ok" && Array.isArray(resPos.lancamentos)) {
+              lancamentos = resPos.lancamentos;
+            }
+          } else {
+            lancamentos = daPlanilha;
+          }
+        }
+
+        // Salva cópia de segurança em todas as chaves
         localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+        localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+        localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
 
         // Busca histórico de meses fechados da planilha
         const resHist = await chamarAPI("/historico");
@@ -1510,21 +1697,36 @@
         const agora = new Date();
         const horaStr = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
         atualizarStatusSync(`Nuvem OK (${horaStr})`, true);
+
+        const sub = document.getElementById("sub-banner-rec");
+        if (sub && lancamentos.length > 0) {
+          sub.innerText = `${lancamentos.length} lançamentos protegidos e salvos no Google Drive`;
+        }
       } else {
-        atualizarStatusSync("Modo Offline", false);
+        // Modo offline: mantém os itens resgatados do aparelho
+        atualizarStatusSync("Modo Seguro (Aparelho)", false);
+        atualizarKPIs();
+        renderizarTetos();
+        renderizarExtrato();
+        renderizarOsDoisGraficosPizza();
+        atualizarAbaMesesAnteriores();
       }
     }
 
     // INICIALIZAÇÃO
     window.onload = () => {
+      // 1. Executa busca profunda preventiva no aparelho
+      resgatarTodosLancamentosDoAparelho();
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
       renderizarOsDoisGraficosPizza();
       atualizarAbaMesesAnteriores();
+
+      // 2. Sincroniza de imediato com a nuvem / Google Drive
       sincronizarTotalComServidor();
 
-      // Sincronização periódica a cada 15 segundos
+      // 3. Sincronização periódica a cada 15 segundos
       setInterval(() => {
         sincronizarTotalComServidor();
       }, 15000);
