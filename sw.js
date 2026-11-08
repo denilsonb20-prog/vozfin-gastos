@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v11-firebase-firestore-excel';
+const CACHE_NAME = 'vozfin-v12-firebase-online-24-7';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
