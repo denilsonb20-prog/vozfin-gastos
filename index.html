@@ -752,6 +752,14 @@
             if (val <= 0 && item.tipo !== "Receita") continue;
 
             const sig = `${item.tipo || "Despesa"}|${val.toFixed(2)}|${(item.descricao || "").trim().toLowerCase()}|${(item.categoria || "").trim().toLowerCase()}`;
+            // Verifica se está na lista de itens excluídos permanentemente
+            let excluidos = [];
+            try { excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]"); } catch(e) {}
+            const excluidosSet = new Set(excluidos.map(x => String(x).toLowerCase()));
+            if (excluidosSet.has(String(item.id).toLowerCase()) || excluidosSet.has(sig.toLowerCase())) {
+              continue;
+            }
+
             if (assinaturas.has(sig)) continue;
             assinaturas.add(sig);
 
@@ -1188,16 +1196,57 @@
     }
 
     async function excluirLancamento(id) {
-      if (!confirm("Remover este lançamento?")) return;
-      lancamentos = lancamentos.filter(l => l.id !== id);
-      localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+      if (!confirm("Remover este lançamento permanentemente?")) return;
+
+      const idStr = String(id);
+      const itemAlvo = lancamentos.find(l => String(l.id) === idStr);
+
+      // 1. Remove da memória ativa imediatamente
+      lancamentos = lancamentos.filter(l => String(l.id) !== idStr);
+
+      // 2. Registra na lista permanente de exclusões para nunca mais ressuscitar
+      let excluidos = [];
+      try {
+        excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]");
+      } catch (e) {}
+      excluidos.push(idStr);
+      if (itemAlvo) {
+        const sig = `${itemAlvo.tipo || ""}|${Number(itemAlvo.valor || 0).toFixed(2)}|${(itemAlvo.descricao || "").trim().toLowerCase()}|${(itemAlvo.categoria || "").trim().toLowerCase()}`;
+        excluidos.push(sig);
+      }
+      localStorage.setItem("vozfin_excluidos", JSON.stringify(excluidos));
+
+      // 3. Remove de todas as chaves de armazenamento local do navegador
+      const chavesLimpar = [
+        "vozfin_lancamentos_14",
+        "vozfin_lancamentos_v4",
+        "vozfin_lancamentos_v3",
+        "vozfin_lancamentos_v2",
+        "vozfin_lancamentos",
+        "vozfin_backup_seguro"
+      ];
+      chavesLimpar.forEach(k => {
+        try {
+          const raw = localStorage.getItem(k);
+          if (raw) {
+            let arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              arr = arr.filter(l => String(l.id) !== idStr);
+              localStorage.setItem(k, JSON.stringify(arr));
+            }
+          }
+        } catch (e) {}
+      });
+
+      // 4. Atualiza a tela imediatamente
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
       renderizarOsDoisGraficosPizza();
 
-      await chamarAPI(`/lancamentos/${id}`, { method: "DELETE" });
-      atualizarStatusSync("Sincronizado ✓", true);
+      // 5. Exclui na planilha do Excel via backend
+      await chamarAPI(`/lancamentos/${idStr}`, { method: "DELETE" });
+      atualizarStatusSync("Removido ✓", true);
     }
 
         // =========================================================================
@@ -1806,57 +1855,28 @@
     async function sincronizarTotalComServidor() {
       atualizarStatusSync("Sincronizando...", false);
 
-      // Se a memória ativa estiver vazia, resgata de todas as chaves do aparelho
-      if (!lancamentos || !lancamentos.length) {
-        lancamentos = resgatarTodosLancamentosDoAparelho();
-      }
-
       const res = await chamarAPI("/lancamentos");
       if (res && res.status === "ok" && Array.isArray(res.lancamentos)) {
-        const daPlanilha = res.lancamentos;
+        let daPlanilha = res.lancamentos;
 
-        // CENÁRIO A: Celular possui dados, mas planilha estava zerada!
-        // Envia todos os dados do celular para o Google Drive imediatamente!
-        if (lancamentos.length > 0 && daPlanilha.length === 0) {
-          atualizarStatusSync("Salvando no Drive...", false);
-          await chamarAPI("/lancamentos/lote", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lancamentos: lancamentos })
+        // Filtra qualquer lançamento que o usuário tenha excluído
+        let excluidos = [];
+        try {
+          excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]");
+        } catch (e) {}
+
+        if (excluidos.length > 0) {
+          const excluidosSet = new Set(excluidos.map(x => String(x).toLowerCase()));
+          daPlanilha = daPlanilha.filter(l => {
+            const sig = `${l.tipo || ""}|${Number(l.valor || 0).toFixed(2)}|${(l.descricao || "").trim().toLowerCase()}|${(l.categoria || "").trim().toLowerCase()}`;
+            return !excluidosSet.has(String(l.id).toLowerCase()) && !excluidosSet.has(sig);
           });
-          const resPos = await chamarAPI("/lancamentos");
-          if (resPos && resPos.status === "ok" && Array.isArray(resPos.lancamentos) && resPos.lancamentos.length) {
-            lancamentos = resPos.lancamentos;
-          }
-          exibirToast(`✓ ${lancamentos.length} lançamentos sincronizados no Google Drive!`);
-        }
-        // CENÁRIO B: Planilha tem lançamentos
-        // Junta os da planilha com itens do celular que porventura faltem na planilha
-        else if (daPlanilha.length > 0) {
-          const sigsPlanilha = new Set(
-            daPlanilha.map(l => `${l.tipo}|${Number(l.valor).toFixed(2)}|${(l.descricao||"").trim().toLowerCase()}|${(l.categoria||"").trim().toLowerCase()}`)
-          );
-          const faltantes = lancamentos.filter(l => 
-            !sigsPlanilha.has(`${l.tipo}|${Number(l.valor).toFixed(2)}|${(l.descricao||"").trim().toLowerCase()}|${(l.categoria||"").trim().toLowerCase()}`)
-          );
-
-          if (faltantes.length > 0) {
-            atualizarStatusSync("Atualizando Drive...", false);
-            await chamarAPI("/lancamentos/lote", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ lancamentos: faltantes })
-            });
-            const resPos = await chamarAPI("/lancamentos");
-            if (resPos && resPos.status === "ok" && Array.isArray(resPos.lancamentos)) {
-              lancamentos = resPos.lancamentos;
-            }
-          } else {
-            lancamentos = daPlanilha;
-          }
         }
 
-        // Salva cópia de segurança em todas as chaves
+        // A planilha é a fonte da verdade definitiva (sem auto-reenvio de faltantes)
+        lancamentos = daPlanilha;
+
+        // Salva cópia limpa em todas as chaves
         localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
         localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
         localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
@@ -1887,14 +1907,8 @@
         const agora = new Date();
         const horaStr = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
         atualizarStatusSync(`Nuvem OK (${horaStr})`, true);
-
-        const sub = document.getElementById("sub-banner-rec");
-        if (sub && lancamentos.length > 0) {
-          sub.innerText = `${lancamentos.length} lançamentos protegidos e salvos no Google Drive`;
-        }
       } else {
-        // Modo offline: mantém os itens resgatados do aparelho
-        atualizarStatusSync("Modo Seguro (Aparelho)", false);
+        atualizarStatusSync("Modo Seguro", false);
         atualizarKPIs();
         renderizarTetos();
         renderizarExtrato();
@@ -1905,18 +1919,16 @@
 
     // INICIALIZAÇÃO
     window.onload = () => {
-      // 1. Executa busca profunda preventiva no aparelho
-      resgatarTodosLancamentosDoAparelho();
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
       renderizarOsDoisGraficosPizza();
       atualizarAbaMesesAnteriores();
 
-      // 2. Sincroniza de imediato com a nuvem / Google Drive
+      // Sincroniza com a nuvem / Google Drive
       sincronizarTotalComServidor();
 
-      // 3. Sincronização periódica a cada 15 segundos
+      // Sincronização periódica a cada 15 segundos
       setInterval(() => {
         sincronizarTotalComServidor();
       }, 15000);
