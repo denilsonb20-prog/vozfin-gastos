@@ -123,19 +123,22 @@
       </div>
     </div>
 
-    <!-- PAINEL PRINCIPAL: SALDO LIVRE EM CONTA & FORMAS DE PAGAMENTO -->
+    <!-- PAINEL PRINCIPAL: SALDO EM CONTA (HOJE) & CONTROLE DA FATURA -->
     <section class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 space-y-2.5 shadow-sm">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Saldo Real Restante no Mês (Sobra Líquida)</span>
-          <div class="text-2xl font-black font-mono tracking-tight text-emerald-400 mt-0.5" id="kpi-saldo-livre">R$ 1.526,80</div>
-          <div class="text-[11px] text-[var(--muted-foreground)]">
-            Entradas: <strong class="text-emerald-400 font-mono" id="kpi-receitas">R$ 0,00</strong> • Gastos: <strong class="text-rose-400 font-mono" id="kpi-despesas">R$ 0,00</strong>
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm">🏦</span>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-teal-400">Saldo em Conta Bancária (Hoje)</span>
           </div>
-          <div class="text-[10px] text-slate-400 mt-1 flex flex-wrap items-center gap-1.5">
-            <span>🏦 Em Conta (PIX/Déb.): <strong class="text-teal-300 font-mono" id="kpi-saldo-bancario">R$ 0,00</strong></span>
+          <div class="text-2xl font-black font-mono tracking-tight text-teal-300 mt-0.5" id="kpi-saldo-bancario">R$ 0,00</div>
+          <div class="text-[11px] text-[var(--muted-foreground)]">
+            Entradas: <strong class="text-emerald-400 font-mono" id="kpi-receitas">R$ 0,00</strong> • Saídas Conta (PIX/Déb): <strong class="text-rose-400 font-mono" id="kpi-saidas-caixa">R$ 0,00</strong>
+          </div>
+          <div class="text-[10px] text-slate-300 mt-1 flex flex-wrap items-center gap-1.5">
+            <span>💳 Fatura Cartão (Mês que vem): <strong class="text-purple-300 font-mono" id="kpi-fatura-cartao">R$ 0,00</strong></span>
             <span>•</span>
-            <span>💳 Fatura Cartão: <strong class="text-purple-300 font-mono" id="kpi-fatura-cartao">R$ 0,00</strong></span>
+            <span>🎯 Sobra Projetada: <strong class="text-emerald-400 font-mono" id="kpi-saldo-livre">R$ 0,00</strong></span>
           </div>
         </div>
         <div class="text-right">
@@ -144,8 +147,8 @@
           <div class="w-24 bg-[var(--background)] h-1.5 rounded-full overflow-hidden mt-1 ml-auto border border-[var(--border)]">
             <div id="kpi-bar-global" class="bg-emerald-500 h-full rounded-full transition-all" style="width: 0%"></div>
           </div>
+          <div class="text-[9px] text-[var(--muted-foreground)] mt-1">Total Geral: <strong class="text-rose-400 font-mono" id="kpi-despesas">R$ 0,00</strong></div>
         </div>
-      </div>
       </div>
 
       <!-- 4 Cards de Formas de Pagamento (Clicáveis para abrir os custos atrelados!) -->
@@ -247,6 +250,9 @@
         </button>
         <button onclick="simularFala('Supermercado 120 no pix')" class="px-2 py-1 rounded-lg bg-orange-950/40 text-orange-300 border border-orange-500/30 active:scale-95">
           🛒 "Mercado 120"
+        </button>
+        <button onclick="simularPagamentoFatura()" class="px-2 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 font-bold active:scale-95">
+          🏦 "Pagar Fatura no PIX"
         </button>
         <button onclick="simularFala('Salário 10000')" class="px-2 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 font-bold active:scale-95">
           💵 "Salário 10000"
@@ -959,7 +965,22 @@
       // 3. Despesa
       document.getElementById("campo-tipo").value = "Despesa";
 
-      // 4. Prioridade Absoluta: Falou Cartão de Crédito ➔ vai direto para CARTÃO
+      // 4. Pagamento de Fatura Anterior (Abate do Saldo em Conta via PIX/Débito)
+      const ePagamentoFatura = (
+        t.includes("pagar fatura") || t.includes("paguei a fatura") || t.includes("paguei fatura") ||
+        t.includes("pagamento fatura") || t.includes("pagamento da fatura") || t.includes("fatura paga")
+      );
+
+      if (ePagamentoFatura) {
+        document.getElementById("campo-tipo").value = "Despesa";
+        document.getElementById("campo-categoria").value = "CARTÃO";
+        document.getElementById("campo-desc").value = "Pagamento Fatura Cartão Anterior";
+        selecionarForma("PIX");
+        atualizarAlertaPreview();
+        return;
+      }
+
+      // 5. Compra no Cartão de Crédito (Vai para a fatura do próximo mês)
       const eCartaoCredito = (
         t.includes("cartão de crédito") || t.includes("cartao de credito") ||
         t.includes("no crédito") || t.includes("no credito") ||
@@ -1077,6 +1098,21 @@
       interpretarFrase(frase);
       if (document.getElementById("chk-autosave").checked) {
         salvarLancamento();
+      }
+    }
+
+    function simularPagamentoFatura() {
+      document.getElementById("campo-tipo").value = "Despesa";
+      document.getElementById("campo-categoria").value = "CARTÃO";
+      document.getElementById("campo-desc").value = "Pagamento Fatura Cartão Anterior";
+      selecionarForma("PIX");
+      document.getElementById("campo-valor").focus();
+      atualizarAlertaPreview();
+      const alerta = document.getElementById("alerta-teto-preview");
+      const texto = document.getElementById("alerta-teto-texto");
+      if (alerta && texto) {
+        alerta.className = "text-[11px] p-2 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/30 flex items-center justify-between";
+        texto.innerText = "🏦 Digite o valor pago da fatura (sairá da conta bancária via PIX).";
       }
     }
 
@@ -1716,40 +1752,70 @@
     // RENDERIZAÇÃO DOS DEMAIS ELEMENTOS
     // =========================================================================
     function atualizarKPIs() {
-      const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
-      const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
+      // 1. Receitas: separa o que entra na conta bancária do que é Vale Alimentação
+      const recBancaria = lancamentos.filter(l => l.tipo === "Receita" && l.formaPagamento !== "Vale Alimentação" && !String(l.categoria || "").toUpperCase().includes("VALE")).reduce((a, b) => a + b.valor, 0);
+      const recVale = lancamentos.filter(l => l.tipo === "Receita" && (l.formaPagamento === "Vale Alimentação" || String(l.categoria || "").toUpperCase().includes("VALE"))).reduce((a, b) => a + b.valor, 0);
+      const recTotal = recBancaria + recVale;
 
+      // 2. Despesas por Forma de Pagamento
       const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
-      const cred = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Crédito" || l.formaPagamento === "Cartão de Credito" || l.formaPagamento.toLowerCase().includes("crédito") || l.formaPagamento.toLowerCase().includes("credito"))).reduce((a, b) => a + b.valor, 0);
-      const deb = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Débito" || l.formaPagamento === "Cartão de Debito" || l.formaPagamento.toLowerCase().includes("débito") || l.formaPagamento.toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
-      const va = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Vale Alimentação" || l.formaPagamento === "Vale Alimentacao" || l.formaPagamento.toLowerCase().includes("vale"))).reduce((a, b) => a + b.valor, 0);
+      const cred = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Crédito" || l.formaPagamento === "Cartão de Credito" || String(l.formaPagamento || "").toLowerCase().includes("crédito") || String(l.formaPagamento || "").toLowerCase().includes("credito"))).reduce((a, b) => a + b.valor, 0);
+      const deb = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Débito" || l.formaPagamento === "Cartão de Debito" || String(l.formaPagamento || "").toLowerCase().includes("débito") || String(l.formaPagamento || "").toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
+      const va = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Vale Alimentação" || l.formaPagamento === "Vale Alimentacao" || String(l.formaPagamento || "").toLowerCase().includes("vale"))).reduce((a, b) => a + b.valor, 0);
+      const despTotal = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
 
-      // Saldo Real Restante no Mês (Entradas Totais menos Gastos Totais)
-      const saldoReal = rec - desp;
-      // Saldo ainda presente na conta bancária física (sem descontar a fatura futura do cartão de crédito)
-      const saldoBancario = rec - (pix + deb);
+      // OPÇÃO 2: REGIME DE CAIXA BANCÁRIO REAL + PROJEÇÃO DE FATURA
+      // Saídas que realmente saem da conta bancária física no mês atual:
+      // PIX (incluindo o pagamento da fatura anterior) + Débito
+      const saidasCaixa = pix + deb;
 
-      const elSaldo = document.getElementById("kpi-saldo-livre");
-      if (elSaldo) {
-        elSaldo.innerText = formatarMoeda(saldoReal);
-        elSaldo.className = saldoReal >= 0 
-          ? "text-2xl font-black font-mono tracking-tight text-emerald-400 mt-0.5"
+      // Saldo Real em Conta (bate 100% com o aplicativo do banco):
+      const saldoBancario = recBancaria - saidasCaixa;
+
+      // Sobra Projetada (Saldo Bancário menos a Fatura Atual que vencerá no próximo mês):
+      const sobraProjetada = saldoBancario - cred;
+
+      // Atualiza valores visíveis no topo
+      const elBancario = document.getElementById("kpi-saldo-bancario");
+      if (elBancario) {
+        elBancario.innerText = formatarMoeda(saldoBancario);
+        elBancario.className = saldoBancario >= 0 
+          ? "text-2xl font-black font-mono tracking-tight text-teal-300 mt-0.5"
           : "text-2xl font-black font-mono tracking-tight text-rose-400 mt-0.5";
       }
 
-      const elBancario = document.getElementById("kpi-saldo-bancario");
-      if (elBancario) elBancario.innerText = formatarMoeda(saldoBancario);
+      const elSaldoLivre = document.getElementById("kpi-saldo-livre");
+      if (elSaldoLivre) {
+        elSaldoLivre.innerText = formatarMoeda(sobraProjetada);
+        elSaldoLivre.className = sobraProjetada >= 0 
+          ? "font-mono font-bold text-emerald-400"
+          : "font-mono font-bold text-rose-400";
+      }
+
       const elFatura = document.getElementById("kpi-fatura-cartao");
       if (elFatura) elFatura.innerText = formatarMoeda(cred);
-      document.getElementById("kpi-receitas").innerText = formatarMoeda(rec);
-      document.getElementById("kpi-despesas").innerText = formatarMoeda(desp);
 
+      const elSaidasCaixa = document.getElementById("kpi-saidas-caixa");
+      if (elSaidasCaixa) elSaidasCaixa.innerText = formatarMoeda(saidasCaixa);
+
+      const elRec = document.getElementById("kpi-receitas");
+      if (elRec) elRec.innerText = formatarMoeda(recBancaria);
+
+      const elDesp = document.getElementById("kpi-despesas");
+      if (elDesp) elDesp.innerText = formatarMoeda(despTotal);
+
+      // Metas Globais (14 Metas)
       const tetoTotal = METAS.reduce((a, b) => a + b.teto, 0);
-      const pctGlobal = tetoTotal > 0 ? (desp / tetoTotal) * 100 : 0;
-      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
-      document.getElementById("kpi-bar-global").style.width = `${Math.min(pctGlobal, 100)}%`;
-      document.getElementById("kpi-bar-global").className = pctGlobal > 100 ? "bg-rose-500 h-full rounded-full transition-all" : (pctGlobal >= 75 ? "bg-amber-500 h-full rounded-full transition-all" : "bg-emerald-500 h-full rounded-full transition-all");
+      const pctGlobal = tetoTotal > 0 ? (despTotal / tetoTotal) * 100 : 0;
+      const elMetaGlobal = document.getElementById("kpi-meta-global");
+      if (elMetaGlobal) elMetaGlobal.innerText = `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
+      const barGlobal = document.getElementById("kpi-bar-global");
+      if (barGlobal) {
+        barGlobal.style.width = `${Math.min(pctGlobal, 100)}%`;
+        barGlobal.className = pctGlobal > 100 ? "bg-rose-500 h-full rounded-full transition-all" : (pctGlobal >= 75 ? "bg-amber-500 h-full rounded-full transition-all" : "bg-emerald-500 h-full rounded-full transition-all");
+      }
 
+      // Cards das 4 Formas de Pagamento
       document.getElementById("val-pix").innerText = formatarMoeda(pix);
       document.getElementById("pct-pix").innerText = `${((pix / 7500) * 100).toFixed(0)}%`;
 
@@ -1831,8 +1897,16 @@
               </div>
               <div>
                 <div class="font-bold text-[11px]">${l.descricao || l.categoria}</div>
-                <div class="text-[9px] text-[var(--muted-foreground)]">
-                  ${l.data} • <span class="font-semibold text-teal-400">${l.formaPagamento}</span> • ${l.categoria}
+                <div class="text-[9px] text-[var(--muted-foreground)] flex items-center gap-1 flex-wrap mt-0.5">
+                  <span>${l.data}</span> • 
+                  <span class="font-semibold text-[var(--foreground)]">${l.categoria}</span> • 
+                  ${l.tipo === 'Despesa' && (l.formaPagamento === 'Cartão de Crédito' || String(l.formaPagamento).includes('Crédito'))
+                    ? '<span class="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 font-bold font-mono">💳 Fatura Futura</span>'
+                    : (l.tipo === 'Despesa' && l.formaPagamento === 'PIX'
+                      ? '<span class="px-1.5 py-0.2 rounded bg-teal-500/20 text-teal-300 font-bold font-mono">💠 Saiu da Conta</span>'
+                      : (l.tipo === 'Despesa' && String(l.formaPagamento).includes('Débito')
+                        ? '<span class="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-bold font-mono">🏧 Saiu da Conta</span>'
+                        : '<span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold font-mono">🍽️ Vale</span>'))}
                 </div>
               </div>
             </div>
