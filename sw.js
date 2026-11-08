@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v6-offline-sync';
+const CACHE_NAME = 'vozfin-v7-opcao2-fatura';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
