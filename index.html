@@ -2236,6 +2236,18 @@
 
 
     // =========================================================================
+        // =========================================================================
+    // CONFIGURAÇÃO OFICIAL DA NUVEM GOOGLE FIREBASE (CONEXÃO DIRETA 24/7)
+    // =========================================================================
+    const VOZFIN_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyDxZMrPx7o4_8pjE0Q26w1t8CPUeVNCzX0",
+      authDomain: "vozfin-2f8f0.firebaseapp.com",
+      projectId: "vozfin-2f8f0",
+      storageBucket: "vozfin-2f8f0.firebasestorage.app",
+      messagingSenderId: "546271359271",
+      appId: "1:546271359271:web:59a39ebf37cd8246d8b902"
+    };
+
     // DADOS INICIAIS DA PLANILHA (MIGRAÇÃO GARANTIDA DE 17 REGISTROS LEGÍTIMOS)
     // =========================================================================
     const DADOS_INICIAIS_MIGRACAO = [
@@ -2491,7 +2503,10 @@
       }
     }
 
-    function inicializarFirebase(config) {
+    function inicializarFirebase(config = null) {
+      if (!config) {
+        config = VOZFIN_FIREBASE_CONFIG;
+      }
       if (!config || !config.projectId || typeof firebase === "undefined") return false;
       try {
         if (!firebase.apps.length) {
@@ -2612,12 +2627,13 @@
 
     // INICIALIZAÇÃO
     window.onload = () => {
-      // Inicializa Google Firebase se configurado
-      const configSalva = localStorage.getItem("vozfin_firebase_config");
-      if (configSalva) {
-        try {
-          inicializarFirebase(JSON.parse(configSalva));
-        } catch(e) {}
+      // Inicializa Google Firebase Oficial automaticamente (independente de PC)
+      try {
+        const configSalva = localStorage.getItem("vozfin_firebase_config");
+        const cfg = configSalva ? JSON.parse(configSalva) : VOZFIN_FIREBASE_CONFIG;
+        inicializarFirebase(cfg);
+      } catch(e) {
+        inicializarFirebase(VOZFIN_FIREBASE_CONFIG);
       }
 
       atualizarKPIs();
