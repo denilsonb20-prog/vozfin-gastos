@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,211 +15,225 @@
   <title>VozFin — Controle Financeiro por Voz</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <script>
+    // LIMPEZA IMEDIATA DE QUALQUER CACHE ANTIGO QUE MOSTRE "ROUPAS" OU "PASSEIOS"
+    (function() {
+      const versaoAtual = 'v4_clean_strict12';
+      const salva = localStorage.getItem('vozfin_app_build');
+      if (salva !== versaoAtual) {
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('vozfin_app_build', versaoAtual);
+        if ('caches' in window) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+        }
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for (let reg of regs) reg.update();
+        });
+      }
+    })();
+  </script>
   <style>
     :root {
-      --background: #0f172a;
+      --background: #090d16;
       --foreground: #f8fafc;
-      --card: #1e293b;
-      --border: #334155;
+      --card: #131d2e;
+      --card-inner: #1a273e;
+      --border: #26354f;
       --muted-foreground: #94a3b8;
       --primary: #059669;
       --primary-foreground: #ffffff;
     }
     @keyframes pulse-ring {
       0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { transform: scale(1.05); box-shadow: 0 0 0 18px rgba(239, 68, 68, 0); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
     .mic-recording {
-      animation: pulse-ring 1.4s infinite;
+      animation: pulse-ring 1.3s infinite;
       background: linear-gradient(135deg, #ef4444, #dc2626) !important;
     }
     .nav-pill.active {
-      background-color: var(--primary);
-      color: var(--primary-foreground);
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
     .chip-pgto.selected {
       border-color: #10b981;
-      background-color: rgba(16, 185, 129, 0.15);
-      color: #10b981;
+      background-color: rgba(16, 185, 129, 0.2);
+      color: #34d399;
       font-weight: 700;
+    }
+    /* Otimização mobile extrema */
+    button, input, select {
+      touch-action: manipulation;
     }
   </style>
 </head>
-<body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen pb-12 select-none">
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen pb-16 select-none font-sans">
 
-  <div class="max-w-2xl mx-auto p-3 sm:p-5 space-y-4">
+  <div class="max-w-md mx-auto p-2.5 sm:p-4 space-y-3">
 
-    <!-- BANNER DE INSTALAÇÃO NO CELULAR (PWA) -->
-    <div id="banner-instalar" class="bg-gradient-to-r from-emerald-900/60 via-slate-800 to-slate-900 border border-emerald-500/40 rounded-2xl p-3 flex items-center justify-between shadow-md">
+    <!-- HEADER ULTRA COMPACTO PARA CELULAR -->
+    <header class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-md flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-sm shadow-sm">
-          📲
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+          🎙️
         </div>
         <div>
-          <div class="text-xs font-bold text-[var(--foreground)]">Instalar VozFin no Celular</div>
-          <div class="text-[11px] text-[var(--muted-foreground)]">Acesse direto da tela inicial em tela cheia</div>
-        </div>
-      </div>
-      <button onclick="acionarInstalacaoApp()" class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1 cursor-pointer">
-        <span>Instalar App</span>
-      </button>
-    </div>
-
-    <!-- HEADER DO APP -->
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-sm">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
-          </svg>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-bold text-base tracking-tight">VozFin Mobile</h1>
-            <span id="sheet-badge" class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium">
-              12 Metas Ativas ✓
+          <div class="flex items-center gap-1.5">
+            <h1 class="font-extrabold text-sm tracking-tight">VozFin</h1>
+            <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider">
+              12 Metas
             </span>
           </div>
-          <p class="text-xs text-[var(--muted-foreground)]">Salário e Gastos Zerados • Fechamento Mensal</p>
+          <p class="text-[11px] text-[var(--muted-foreground)]">Salário e Gastos Zerados</p>
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-1.5">
-        <!-- BOTÃO DE CORTE DE MÊS -->
-        <button onclick="abrirModalCorte()" class="text-xs px-3 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-500 hover:to-indigo-500 font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer">
-          <span>✂️</span> <span>Fazer Corte de Mês</span>
+      <div class="flex items-center gap-1">
+        <button onclick="forcarAtualizacaoTotal()" class="text-[11px] px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-inner)] hover:opacity-80 flex items-center gap-1 text-[var(--muted-foreground)]" title="Recarregar limpo">
+          <span>🔄</span>
         </button>
-        <button onclick="abrirModalQR()" class="text-xs px-2.5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 font-bold flex items-center gap-1 shadow-xs">
-          <span>📱 Celular</span>
-        </button>
-        <button onclick="sincronizarAgora()" class="text-xs px-2.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:opacity-80 font-medium" title="Sincronizar">
-          🔄
+        <button onclick="abrirModalQR()" class="text-[11px] px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold flex items-center gap-1 shadow-sm">
+          <span>📱</span> <span>Celular</span>
         </button>
       </div>
-    </div>
+    </header>
 
-    <!-- PAINEL PRINCIPAL: SALDO LIVRE EM CONTA & 4 FORMAS DE PAGAMENTO -->
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border)]">
+    <!-- ========================================================================= -->
+    <!-- BOTÃO DE CORTE DE MÊS (DESTAQUE MÁXIMO NO TOPO) -->
+    <!-- ========================================================================= -->
+    <section class="bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-slate-900 border-2 border-purple-500/60 rounded-2xl p-3 shadow-lg">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center text-xl shadow-md shrink-0">
+            ✂️
+          </div>
+          <div>
+            <div class="text-xs font-black uppercase tracking-wide text-purple-300">Fechamento do Mês</div>
+            <div class="text-[11px] text-slate-300">Arquivar gastos e zerar para o novo mês</div>
+          </div>
+        </div>
+        <button onclick="abrirModalCorte()" class="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 shrink-0 flex items-center gap-1">
+          <span>Fazer Corte</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- PAINEL PRINCIPAL: SALDO LIVRE EM CONTA & FORMAS DE PAGAMENTO -->
+    <section class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 space-y-2.5 shadow-sm">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-500">Saldo Livre em Conta (Entradas - PIX/Débito)</span>
-          <div class="text-2xl font-black font-mono mt-0.5 text-[var(--foreground)]" id="kpi-saldo-livre">R$ 0,00</div>
-          <p class="text-xs text-[var(--muted-foreground)]">
-            Entradas: <strong class="text-emerald-500 font-mono" id="kpi-receitas">R$ 0,00</strong> • Gastos: <strong class="text-rose-500 font-mono" id="kpi-despesas">R$ 0,00</strong>
-          </p>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Saldo Livre em Conta (PIX/Débito)</span>
+          <div class="text-2xl font-black font-mono tracking-tight text-[var(--foreground)] mt-0.5" id="kpi-saldo-livre">R$ 0,00</div>
+          <div class="text-[11px] text-[var(--muted-foreground)]">
+            Entradas: <strong class="text-emerald-400 font-mono" id="kpi-receitas">R$ 0,00</strong> • Gastos: <strong class="text-rose-400 font-mono" id="kpi-despesas">R$ 0,00</strong>
+          </div>
         </div>
-        <div class="bg-[var(--background)] px-3 py-2 rounded-xl border border-[var(--border)] text-right">
-          <span class="text-xs text-[var(--muted-foreground)]">Consumo do Orçamento Total</span>
-          <div class="text-sm font-bold font-mono" id="kpi-meta-global">0,0% de R$ 9.178,00</div>
-          <div class="w-full bg-[var(--card)] h-1.5 rounded-full overflow-hidden mt-1 border border-[var(--border)]">
+        <div class="text-right">
+          <span class="text-[10px] text-[var(--muted-foreground)] uppercase font-semibold">Teto Total (12 Metas)</span>
+          <div class="text-xs font-bold font-mono text-[var(--foreground)]" id="kpi-meta-global">0% de R$ 9.178,00</div>
+          <div class="w-24 bg-[var(--background)] h-1.5 rounded-full overflow-hidden mt-1 ml-auto border border-[var(--border)]">
             <div id="kpi-bar-global" class="bg-emerald-500 h-full rounded-full transition-all" style="width: 0%"></div>
           </div>
         </div>
       </div>
 
-      <!-- 4 Cards das Formas de Pagamento -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
-          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-            <span class="font-semibold text-teal-500">💠 PIX</span>
-            <span id="pct-pix" class="font-mono">0%</span>
+      <!-- 4 Cards de Formas de Pagamento em Grid 2x2 para celular -->
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="font-bold text-teal-400">💠 PIX</span>
+            <span id="pct-pix" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
           </div>
-          <div class="text-sm font-bold font-mono mt-1" id="val-pix">R$ 0,00</div>
-          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 7.500</div>
+          <div class="text-sm font-black font-mono mt-0.5" id="val-pix">R$ 0,00</div>
+          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 7.500</div>
         </div>
 
-        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
-          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-            <span class="font-semibold text-purple-400">💳 Crédito</span>
-            <span id="pct-credito" class="font-mono">0%</span>
+        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="font-bold text-purple-400">💳 Crédito</span>
+            <span id="pct-credito" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
           </div>
-          <div class="text-sm font-bold font-mono mt-1" id="val-credito">R$ 0,00</div>
-          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 2.500</div>
+          <div class="text-sm font-black font-mono mt-0.5" id="val-credito">R$ 0,00</div>
+          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 2.700</div>
         </div>
 
-        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
-          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-            <span class="font-semibold text-sky-400">🏧 Débito</span>
-            <span id="pct-debito" class="font-mono">0%</span>
+        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="font-bold text-sky-400">🏧 Débito</span>
+            <span id="pct-debito" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
           </div>
-          <div class="text-sm font-bold font-mono mt-1" id="val-debito">R$ 0,00</div>
-          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 1.500</div>
+          <div class="text-sm font-black font-mono mt-0.5" id="val-debito">R$ 0,00</div>
+          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 1.500</div>
         </div>
 
-        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
-          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-            <span class="font-semibold text-amber-400">🍽️ Vale Alim.</span>
-            <span id="pct-va" class="font-mono">0%</span>
+        <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="font-bold text-amber-400">🍽️ Vale Alim.</span>
+            <span id="pct-va" class="font-mono text-[10px] text-[var(--muted-foreground)]">0%</span>
           </div>
-          <div class="text-sm font-bold font-mono mt-1" id="val-va">R$ 0,00</div>
-          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 690</div>
+          <div class="text-sm font-black font-mono mt-0.5" id="val-va">R$ 0,00</div>
+          <div class="text-[10px] text-[var(--muted-foreground)]">Teto: R$ 690</div>
         </div>
       </div>
-    </div>
+    </section>
 
     <!-- ÁREA DE COMANDO DE VOZ E ENTRADA RÁPIDA -->
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
+    <section class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 space-y-2.5 shadow-sm">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="font-bold text-sm">Falar Salário ou Gasto</h2>
-          <p class="text-xs text-[var(--muted-foreground)]">Fale o que gastou ou fale seu salário/vale</p>
+          <h2 class="font-bold text-xs">Falar Salário ou Gasto</h2>
+          <p class="text-[10px] text-[var(--muted-foreground)]">Fale no microfone ou clique nos atalhos</p>
         </div>
-        <div class="flex items-center gap-2">
-          <label class="flex items-center gap-1.5 text-xs bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[var(--border)] cursor-pointer">
-            <input id="chk-autosave" type="checkbox" checked class="accent-emerald-500" />
-            <span>⚡ Salvar automático</span>
+        <div class="flex items-center gap-1.5">
+          <label class="flex items-center gap-1 text-[11px] bg-[var(--card-inner)] px-2 py-1 rounded-lg border border-[var(--border)] cursor-pointer">
+            <input id="chk-autosave" type="checkbox" checked class="accent-emerald-500 w-3 h-3" />
+            <span>⚡ Auto-salvar</span>
           </label>
-          <button id="btn-mic" onclick="alternarGravacaoVoz()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
-            </svg>
-            <span id="mic-label">Falar Agora</span>
-          </button>
         </div>
       </div>
 
-      <!-- Barra de Frase Falada ou Digitada -->
+      <!-- Botão Central de Microfone Grande e Caixa de Texto -->
       <div class="flex gap-2">
-        <input id="input-frase-voz" type="text" placeholder="Fale ou digite ex: salário 10000 ou gasolina 100 no crédito..."
+        <button id="btn-mic" onclick="alternarGravacaoVoz()" class="w-12 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-all">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+          </svg>
+        </button>
+        <input id="input-frase-voz" type="text" placeholder="Fale ou digite ex: 50 no cartão de crédito..."
           oninput="interpretarFrase(this.value)"
-          class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)] focus:outline-none focus:border-emerald-500" />
-        <button onclick="salvarLancamento()" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 shrink-0 cursor-pointer">
+          class="w-full bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)] focus:outline-none focus:border-emerald-500" />
+        <button onclick="salvarLancamento()" class="px-3 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 shrink-0 active:scale-95">
           Lançar
         </button>
       </div>
 
-      <!-- Botões de Teste Rápido de 1 Toque -->
-      <div class="flex flex-wrap gap-1.5 items-center">
-        <span class="text-xs text-[var(--muted-foreground)]">Exemplos de voz:</span>
-        <button onclick="simularFala('Salário 10000')" class="text-xs px-2 py-1 rounded-lg bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500 transition-all">
-          💵 "Salário 10000"
-        </button>
-        <button onclick="simularFala('Vale alimentação 690')" class="text-xs px-2 py-1 rounded-lg bg-amber-950/40 text-amber-400 border border-amber-500/30 hover:border-amber-500 transition-all">
-          🍽️ "Vale alimentação 690"
-        </button>
-        <button onclick="simularFala('Aluguel 1535 no pix')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          🏠 "Aluguel 1535 no pix"
-        </button>
-        <button onclick="simularFala('Parcela carro 1413 no debito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          🚗 "Parcela carro 1413"
-        </button>
-        <button onclick="simularFala('50 no cartão de crédito')" class="text-xs px-2 py-1 rounded-lg bg-purple-950/40 text-purple-300 border border-purple-500/30 hover:border-purple-500 transition-all font-bold">
+      <!-- Atalhos de Teste Rápido (Cartão de crédito em destaque) -->
+      <div class="flex flex-wrap gap-1 items-center text-[11px]">
+        <span class="text-[10px] text-[var(--muted-foreground)] mr-0.5">Testar:</span>
+        <button onclick="simularFala('50 no cartão de crédito')" class="px-2 py-1 rounded-lg bg-purple-950/60 text-purple-300 border border-purple-500/40 font-bold active:scale-95">
           💳 "50 no cartão de crédito"
         </button>
-        <button onclick="simularFala('Poupança 500 no pix')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          🏦 "Poupança 500"
+        <button onclick="simularFala('Salário 10000')" class="px-2 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 font-bold active:scale-95">
+          💵 "Salário 10000"
         </button>
-        <button onclick="simularFala('Combustível 100 no crédito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+        <button onclick="simularFala('Aluguel 1535 no pix')" class="px-2 py-1 rounded-lg bg-[var(--card-inner)] border border-[var(--border)] active:scale-95">
+          🏠 "Aluguel 1535"
+        </button>
+        <button onclick="simularFala('Combustível 100 no débito')" class="px-2 py-1 rounded-lg bg-[var(--card-inner)] border border-[var(--border)] active:scale-95">
           ⛽ "Combustível 100"
         </button>
       </div>
 
-      <!-- CARD DE CONFIRMAÇÃO AUTOMÁTICA DO LANÇAMENTO -->
-      <div id="card-preview" class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 space-y-2.5">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <!-- CARD DE CONFIRMAÇÃO DO LANÇAMENTO -->
+      <div id="card-preview" class="bg-[var(--card-inner)] border border-[var(--border)] rounded-xl p-2.5 space-y-2">
+        <div class="grid grid-cols-2 gap-2 text-xs">
           <div>
-            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Tipo</label>
+            <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5">Tipo</label>
             <select id="campo-tipo" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-semibold">
               <option value="Despesa">📉 Despesa (Gasto)</option>
               <option value="Receita">📈 Receita (Entrada)</option>
@@ -224,240 +241,207 @@
           </div>
 
           <div>
-            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Valor (R$)</label>
+            <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5">Valor (R$)</label>
             <input id="campo-valor" type="number" step="0.01" placeholder="0.00" oninput="atualizarAlertaPreview()"
-              class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold font-mono text-emerald-500" />
-          </div>
-
-          <div class="col-span-2">
-            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Categoria (Somente as 12 Metas)</label>
-            <select id="campo-categoria" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-semibold">
-              <option value="ALUGUEL">🏠 ALUGUEL</option>
-              <option value="PARCELA CARRO">🚗 PARCELA CARRO</option>
-              <option value="CARTÃO">💳 CARTÃO</option>
-              <option value="POUPANÇA">🏦 POUPANÇA</option>
-              <option value="COMBUSTIVEL">⛽ COMBUSTIVEL</option>
-              <option value="PLANO DE SAUDE">🩺 PLANO DE SAUDE</option>
-              <option value="CONTA DE LUZ">💡 CONTA DE LUZ</option>
-              <option value="CONTA DE AGUA">🚰 CONTA DE AGUA</option>
-              <option value="CONTA DE INTERNET">🌐 CONTA DE INTERNET</option>
-              <option value="SEGURO MOTO/CARRO">🛡️ SEGURO MOTO/CARRO</option>
-              <option value="CONTA TELEFONE">📱 CONTA TELEFONE</option>
-              <option value="OUTROS GASTOS">📦 OUTROS GASTOS</option>
-              <option value="Salário">💵 Salário (Receita)</option>
-              <option value="Vale Alimentação">🍽️ Vale Alimentação (Receita)</option>
-            </select>
+              class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold font-mono text-emerald-400" />
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Forma de Pagamento</label>
-            <div class="grid grid-cols-4 gap-1">
-              <button type="button" onclick="selecionarForma('PIX')" id="btn-f-pix" class="chip-pgto selected text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">PIX</button>
-              <button type="button" onclick="selecionarForma('Cartão de Crédito')" id="btn-f-cred" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">Crédito</button>
-              <button type="button" onclick="selecionarForma('Cartão de Débito')" id="btn-f-deb" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">Débito</button>
-              <button type="button" onclick="selecionarForma('Vale Alimentação')" id="btn-f-va" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">Vale</button>
-            </div>
-          </div>
+        <div class="text-xs">
+          <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5">Categoria (Somente as 12 Oficiais)</label>
+          <select id="campo-categoria" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold">
+            <option value="ALUGUEL">🏠 ALUGUEL</option>
+            <option value="PARCELA CARRO">🚗 PARCELA CARRO</option>
+            <option value="CARTÃO">💳 CARTÃO</option>
+            <option value="POUPANÇA">🏦 POUPANÇA</option>
+            <option value="COMBUSTIVEL">⛽ COMBUSTIVEL</option>
+            <option value="PLANO DE SAUDE">🩺 PLANO DE SAUDE</option>
+            <option value="CONTA DE LUZ">💡 CONTA DE LUZ</option>
+            <option value="CONTA DE AGUA">🚰 CONTA DE AGUA</option>
+            <option value="CONTA DE INTERNET">🌐 CONTA DE INTERNET</option>
+            <option value="SEGURO MOTO/CARRO">🛡️ SEGURO MOTO/CARRO</option>
+            <option value="CONTA TELEFONE">📱 CONTA TELEFONE</option>
+            <option value="OUTROS GASTOS">📦 OUTROS GASTOS</option>
+            <option value="Salário">💵 Salário (Receita)</option>
+            <option value="Vale Alimentação">🍽️ Vale Alimentação (Receita)</option>
+          </select>
+        </div>
 
-          <div>
-            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Descrição</label>
-            <input id="campo-desc" type="text" placeholder="Ex: Aluguel do mês, gasolina..." class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs" />
+        <div class="text-xs">
+          <label class="text-[10px] text-[var(--muted-foreground)] block mb-1">Forma de Pagamento</label>
+          <div class="grid grid-cols-4 gap-1">
+            <button type="button" onclick="selecionarForma('PIX')" id="btn-f-pix" class="chip-pgto selected text-center py-1.5 rounded-lg border border-[var(--border)] text-[11px] font-semibold">PIX</button>
+            <button type="button" onclick="selecionarForma('Cartão de Crédito')" id="btn-f-cred" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-[11px] font-semibold">Crédito</button>
+            <button type="button" onclick="selecionarForma('Cartão de Débito')" id="btn-f-deb" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-[11px] font-semibold">Débito</button>
+            <button type="button" onclick="selecionarForma('Vale Alimentação')" id="btn-f-va" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-[11px] font-semibold">Vale</button>
           </div>
         </div>
 
-        <!-- Alerta de Teto / Meta -->
-        <div id="alerta-teto-preview" class="text-xs p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between">
+        <div>
+          <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5">Descrição</label>
+          <input id="campo-desc" type="text" placeholder="Ex: Fatura, almoço, aluguel..." class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs" />
+        </div>
+
+        <!-- Alerta de Teto -->
+        <div id="alerta-teto-preview" class="text-[11px] p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between">
           <span id="alerta-teto-texto">Pronto para lançar.</span>
           <span id="alerta-teto-pct" class="font-mono font-bold">0%</span>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- ABAS DE NAVEGAÇÃO PRINCIPAIS (4 ABAS) -->
-    <div class="grid grid-cols-4 bg-[var(--card)] p-1 rounded-2xl border border-[var(--border)] text-xs font-bold gap-1">
-      <button id="tab-btn-pizza" onclick="mudarAba('pizza')" class="nav-pill active py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
-        <span>📊</span> <span>Pizza</span>
+    <!-- 4 ABAS DE NAVEGAÇÃO COMPACTAS PARA CELULAR -->
+    <nav class="grid grid-cols-4 bg-[var(--card)] p-1 rounded-2xl border border-[var(--border)] text-xs font-bold gap-1 shadow-sm">
+      <button id="tab-btn-pizza" onclick="mudarAba('pizza')" class="nav-pill active py-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5">
+        <span class="text-sm">📊</span> <span class="text-[11px]">Pizza</span>
       </button>
-      <button id="tab-btn-tetos" onclick="mudarAba('tetos')" class="nav-pill py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
-        <span>🎯</span> <span>12 Metas</span>
+      <button id="tab-btn-tetos" onclick="mudarAba('tetos')" class="nav-pill py-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5">
+        <span class="text-sm">🎯</span> <span class="text-[11px]">12 Metas</span>
       </button>
-      <button id="tab-btn-extrato" onclick="mudarAba('extrato')" class="nav-pill py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
-        <span>📋</span> <span>Extrato (<span id="count-lanc">0</span>)</span>
+      <button id="tab-btn-extrato" onclick="mudarAba('extrato')" class="nav-pill py-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5">
+        <span class="text-sm">📋</span> <span class="text-[11px]">Extrato</span>
       </button>
-      <button id="tab-btn-meses" onclick="mudarAba('meses')" class="nav-pill py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
-        <span>📅</span> <span>Anteriores</span>
+      <button id="tab-btn-meses" onclick="mudarAba('meses')" class="nav-pill py-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5">
+        <span class="text-sm">📅</span> <span class="text-[11px]">Anteriores</span>
       </button>
-    </div>
+    </nav>
 
-    <!-- ABA 1: GRÁFICO DE PIZZA DINÂMICO DOS GASTOS ATUAIS -->
-    <div id="aba-pizza" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+    <!-- ABA 1: GRÁFICO DE PIZZA (12 METAS) -->
+    <div id="aba-pizza" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <h3 class="font-bold text-sm">Divisão Visual das 12 Metas (Pizza)</h3>
-          <p class="text-xs text-[var(--muted-foreground)]">Fatia proporcional de cada categoria no mês ativo</p>
+          <h3 class="font-bold text-xs">Divisão dos Gastos (Pizza)</h3>
+          <p class="text-[10px] text-[var(--muted-foreground)]">Proporção das 12 metas no mês atual</p>
         </div>
-        <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold" id="badge-total-pizza">
+        <span class="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 font-bold font-mono" id="badge-total-pizza">
           R$ 0,00
         </span>
       </div>
 
-      <!-- Renderização do Gráfico SVG de Pizza -->
-      <div id="container-pizza-visual" class="flex flex-col sm:flex-row items-center justify-center gap-6 py-2">
-        <div class="relative w-52 h-52 flex items-center justify-center">
+      <div class="flex flex-col items-center justify-center gap-3 py-1">
+        <div class="relative w-44 h-44 flex items-center justify-center">
           <svg id="svg-pie" class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#334155" stroke-width="20" />
+            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />
           </svg>
           <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <span class="text-[10px] uppercase font-bold text-[var(--muted-foreground)]">Gastos</span>
-            <span class="text-sm font-black font-mono text-[var(--foreground)]" id="pie-center-val">R$ 0,00</span>
+            <span class="text-[9px] uppercase font-bold text-[var(--muted-foreground)]">Total Gasto</span>
+            <span class="text-xs font-black font-mono text-[var(--foreground)]" id="pie-center-val">R$ 0,00</span>
           </div>
         </div>
 
-        <!-- Legenda das Fatias -->
-        <div id="pie-legend" class="space-y-1.5 w-full sm:w-auto text-xs flex-1">
-          <div class="text-[var(--muted-foreground)] text-xs text-center sm:text-left">
-            Nenhum gasto lançado ainda neste mês. Fale seu salário e seus gastos no microfone acima!
-          </div>
-        </div>
+        <div id="pie-legend" class="w-full space-y-1 text-xs"></div>
       </div>
     </div>
 
-    <!-- ABA 2: AS 12 METAS COM OPÇÃO DE EDIÇÃO -->
-    <div id="aba-tetos" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3 hidden">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+    <!-- ABA 2: AS 12 METAS E OPÇÃO DE EDITAR -->
+    <div id="aba-tetos" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5 hidden">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <h3 class="font-bold text-sm">Tetos e Metas (12 Categorias)</h3>
-          <p class="text-xs text-[var(--muted-foreground)]">Verde: normal • Amarelo: >75% • Vermelho: estourado</p>
+          <h3 class="font-bold text-xs">Tetos e Metas (Somente as 12)</h3>
+          <p class="text-[10px] text-[var(--muted-foreground)]">Ajuste os valores orçados conforme sua necessidade</p>
         </div>
-        <button onclick="abrirModalEditarMetas()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-[var(--border)] text-emerald-400 font-bold flex items-center gap-1 cursor-pointer">
-          <span>✏️</span> <span>Editar Metas</span>
+        <button onclick="abrirModalEditarMetas()" class="text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-800 border border-[var(--border)] text-emerald-400 font-bold flex items-center gap-1">
+          <span>✏️</span> <span>Editar</span>
         </button>
       </div>
-      <div id="lista-tetos" class="space-y-2.5"></div>
+      <div id="lista-tetos" class="space-y-2"></div>
     </div>
 
-    <!-- ABA 3: EXTRATO DE LANÇAMENTOS DO MÊS ATUAL -->
-    <div id="aba-extrato" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3 hidden">
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5">
-        <h3 class="font-bold text-sm">Extrato do Mês Ativo</h3>
-        <div class="flex flex-wrap gap-1 text-xs">
-          <button onclick="filtrarExtrato('TODOS')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Todos</button>
-          <button onclick="filtrarExtrato('PIX')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">PIX</button>
-          <button onclick="filtrarExtrato('Cartão de Crédito')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Crédito</button>
-          <button onclick="filtrarExtrato('Cartão de Débito')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Débito</button>
-          <button onclick="filtrarExtrato('Vale Alimentação')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">VA</button>
+    <!-- ABA 3: EXTRATO DO MÊS ATUAL -->
+    <div id="aba-extrato" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5 hidden">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+        <h3 class="font-bold text-xs">Extrato do Mês Atual</h3>
+        <div class="flex gap-1 text-[10px]">
+          <button onclick="filtrarExtrato('TODOS')" class="px-2 py-0.5 rounded-lg bg-[var(--card-inner)] border border-[var(--border)]">Todos</button>
+          <button onclick="filtrarExtrato('Cartão de Crédito')" class="px-2 py-0.5 rounded-lg bg-[var(--card-inner)] border border-[var(--border)] text-purple-300">Crédito</button>
+          <button onclick="filtrarExtrato('PIX')" class="px-2 py-0.5 rounded-lg bg-[var(--card-inner)] border border-[var(--border)] text-teal-300">PIX</button>
         </div>
       </div>
-      <div id="lista-extrato" class="space-y-2"></div>
+      <div id="lista-extrato" class="space-y-1.5"></div>
     </div>
 
-    <!-- ABA 4: MESES ANTERIORES (HISTÓRICO DE CORTES ARQUIVADOS) -->
-    <div id="aba-meses" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3 hidden">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5">
+    <!-- ABA 4: MESES ANTERIORES (ARQUIVO DOS CORTES) -->
+    <div id="aba-meses" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5 hidden">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <h3 class="font-bold text-sm">📅 Gastos dos Meses Anteriores</h3>
-          <p class="text-xs text-[var(--muted-foreground)]">Consulte fechamentos arquivados e histórico de cortes</p>
+          <h3 class="font-bold text-xs">📅 Meses Anteriores</h3>
+          <p class="text-[10px] text-[var(--muted-foreground)]">Histórico dos cortes mensais arquivados</p>
         </div>
-        <div class="flex items-center gap-2">
-          <select id="select-mes-historico" onchange="carregarMesHistorico(this.value)" class="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-1.5 text-xs font-bold">
-            <option value="">Nenhum mês arquivado ainda</option>
-          </select>
-        </div>
+        <select id="select-mes-historico" onchange="carregarMesHistorico(this.value)" class="bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-2 py-1 text-xs font-bold">
+          <option value="">Nenhum mês arquivado ainda</option>
+        </select>
       </div>
-
-      <div id="conteudo-mes-historico" class="space-y-3">
-        <div class="text-center py-8 text-[var(--muted-foreground)] text-xs">
-          Nenhum fechamento de mês realizado ainda.<br>
-          Quando seu mês terminar, clique em <strong class="text-purple-400">"✂️ Fazer Corte de Mês"</strong> no topo para arquivar seus gastos e começar o próximo mês zerado!
-        </div>
-      </div>
+      <div id="conteudo-mes-historico"></div>
     </div>
 
-    <!-- MODAL DE CORTE DE MÊS -->
-    <div id="modal-corte" class="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl">
-        <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+    <!-- MODAL DO BOTÃO DE CORTE DE MÊS -->
+    <div id="modal-corte" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
+      <div class="bg-[var(--card)] border-2 border-purple-500/50 rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
           <div class="flex items-center gap-2">
-            <span class="text-lg">✂️</span>
+            <span class="text-xl">✂️</span>
             <div>
-              <h3 class="font-bold text-sm text-[var(--foreground)]">Fechamento Mensal (Corte)</h3>
-              <p class="text-[11px] text-[var(--muted-foreground)]">Arquiva os gastos atuais e inicia um novo mês zerado</p>
+              <h3 class="font-extrabold text-sm text-[var(--foreground)]">Fechamento do Mês</h3>
+              <p class="text-[10px] text-[var(--muted-foreground)]">Arquiva os gastos e inicia novo mês zerado</p>
             </div>
           </div>
-          <button onclick="fecharModalCorte()" class="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-slate-800">✕</button>
+          <button onclick="fecharModalCorte()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
         </div>
 
-        <div class="space-y-3 text-xs">
+        <div class="space-y-2.5 text-xs">
           <div>
             <label class="font-bold block mb-1 text-[var(--foreground)]">De qual mês esses gastos representam?</label>
-            <input id="input-corte-mes" type="text" placeholder="Ex: Outubro/2026, Novembro/2026..." class="w-full bg-[var(--background)] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs font-bold text-[var(--foreground)] focus:outline-none focus:border-emerald-500" />
-            <p class="text-[11px] text-[var(--muted-foreground)] mt-1">Este nome identificará este mês na aba de meses anteriores.</p>
+            <input id="input-corte-mes" type="text" placeholder="Ex: Outubro/2026, Novembro/2026..." class="w-full bg-[var(--card-inner)] border border-purple-500/50 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-purple-400" />
           </div>
 
-          <!-- Resumo do que será arquivado -->
-          <div class="bg-[var(--background)] p-3 rounded-xl border border-[var(--border)] space-y-1.5">
-            <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Resumo do Arquivamento:</div>
-            <div class="flex justify-between"><span>Entradas Registradas:</span><strong class="font-mono text-emerald-400" id="corte-resumo-rec">R$ 0,00</strong></div>
-            <div class="flex justify-between"><span>Gastos Totais:</span><strong class="font-mono text-rose-400" id="corte-resumo-desp">R$ 0,00</strong></div>
-            <div class="flex justify-between"><span>Saldo Economizado:</span><strong class="font-mono text-teal-400" id="corte-resumo-saldo">R$ 0,00</strong></div>
-            <div class="flex justify-between"><span>Lançamentos no Extrato:</span><strong class="font-mono" id="corte-resumo-qtd">0 itens</strong></div>
+          <div class="bg-[var(--card-inner)] p-2.5 rounded-xl border border-[var(--border)] space-y-1 text-[11px]">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Será Arquivado:</div>
+            <div class="flex justify-between"><span>Entradas:</span><strong class="font-mono text-emerald-400" id="corte-resumo-rec">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Gastos:</span><strong class="font-mono text-rose-400" id="corte-resumo-desp">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Saldo Livre:</span><strong class="font-mono text-teal-400" id="corte-resumo-saldo">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Lançamentos:</span><strong class="font-mono" id="corte-resumo-qtd">0 itens</strong></div>
           </div>
 
-          <div class="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px] leading-relaxed">
-            💡 <strong>O que acontece ao confirmar:</strong> Todos estes gastos serão salvos com segurança no histórico. Em seguida, seu extrato e gastos serão zerados para você começar o novo mês do zero!
+          <div class="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px]">
+            💡 Ao confirmar, estes dados vão para a aba <strong>Meses Anteriores</strong> e o app e a planilha voltam totalmente zerados para o próximo mês!
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
-          <button onclick="fecharModalCorte()" class="px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-semibold hover:bg-slate-800">Cancelar</button>
-          <button onclick="confirmarCorteMes()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md cursor-pointer">
-            Confirmar Corte e Zerar Mês
+        <div class="flex justify-end gap-2 pt-1 border-t border-[var(--border)]">
+          <button onclick="fecharModalCorte()" class="px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-semibold">Cancelar</button>
+          <button onclick="confirmarCorteMes()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-extrabold shadow-md active:scale-95">
+            Confirmar e Zerar Mês
           </button>
         </div>
       </div>
     </div>
 
     <!-- MODAL DE EDIÇÃO DE METAS -->
-    <div id="modal-metas" class="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
-        <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
-          <div class="flex items-center gap-2">
-            <span class="text-lg">✏️</span>
-            <div>
-              <h3 class="font-bold text-sm text-[var(--foreground)]">Editar Tetos das 12 Metas</h3>
-              <p class="text-[11px] text-[var(--muted-foreground)]">Ajuste os valores orçados conforme seu planejamento</p>
-            </div>
-          </div>
-          <button onclick="fecharModalEditarMetas()" class="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-slate-800">✕</button>
+    <div id="modal-metas" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+          <h3 class="font-bold text-xs text-[var(--foreground)]">✏️ Editar os Tetos das 12 Metas</h3>
+          <button onclick="fecharModalEditarMetas()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
         </div>
-
-        <div id="campos-edicao-metas" class="space-y-2 overflow-y-auto pr-1 flex-1 text-xs">
-          <!-- Gerado dinamicamente via JS com as 12 categorias -->
-        </div>
-
+        <div id="campos-edicao-metas" class="space-y-1.5 overflow-y-auto pr-1 flex-1 text-xs"></div>
         <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
-          <button onclick="fecharModalEditarMetas()" class="px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-semibold hover:bg-slate-800">Cancelar</button>
-          <button onclick="salvarMetasEditadas()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md cursor-pointer">
-            Salvar Metas
-          </button>
+          <button onclick="fecharModalEditarMetas()" class="px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs">Cancelar</button>
+          <button onclick="salvarMetasEditadas()" class="px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold active:scale-95">Salvar</button>
         </div>
       </div>
     </div>
 
-    <!-- MODAL QR CODE PARA ABRIR NO CELULAR -->
-    <div id="modal-qr" class="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-center">
+    <!-- MODAL QR CODE -->
+    <div id="modal-qr" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 max-w-xs w-full space-y-3 shadow-2xl text-center">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-sm">📱 Aponte a Câmera do Celular</h3>
+          <h3 class="font-bold text-xs">📱 Aponte a Câmera</h3>
           <button onclick="fecharModalQR()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
         </div>
-        <div class="bg-white p-3 rounded-xl inline-block shadow-inner mx-auto" id="qr-container">
-          <img src="./qr_github_pages.svg" alt="QR Code GitHub Pages" class="w-48 h-48 mx-auto" onerror="this.src='./qr_cloudflare.svg'" />
+        <div class="bg-white p-2 rounded-xl inline-block mx-auto shadow">
+          <img src="./qr_github_pages.svg" alt="QR Code" class="w-44 h-44 mx-auto" onerror="this.src='./qr_cloudflare.svg'" />
         </div>
-        <p class="text-xs text-[var(--muted-foreground)]">Ou acesse no celular pelo link:</p>
-        <div class="text-xs font-mono bg-[var(--background)] p-2 rounded-lg text-emerald-400 break-all select-all">
+        <div class="text-[10px] font-mono bg-[var(--background)] p-2 rounded-lg text-emerald-400 break-all select-all">
           https://denilsonb20-prog.github.io/vozfin-gastos/
         </div>
       </div>
@@ -466,8 +450,8 @@
   </div>
 
   <script>
-    // AS 12 METAS EXATAS ESPECIFICADAS PELO USUÁRIO
-    const CATEGORIAS_PADRAO = [
+    // ESTRITAMENTE AS 12 METAS OFICIAIS DO USUÁRIO (NENHUMA OUTRA EXISTE)
+    const CATEGORIAS_OFICIAIS = [
       { nome: "ALUGUEL", icone: "🏠", teto: 1535.0, cor: "#3b82f6" },
       { nome: "PARCELA CARRO", icone: "🚗", teto: 1413.0, cor: "#06b6d4" },
       { nome: "CARTÃO", icone: "💳", teto: 2700.0, cor: "#a855f7" },
@@ -489,53 +473,31 @@
     let filtroAtual = "TODOS";
     let gravando = false;
     let recognition = null;
-    let deferredPrompt = null;
 
-    // PWA Install prompt listener
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      const banner = document.getElementById('banner-instalar');
-      if (banner) banner.style.display = 'flex';
-    });
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    }
-
-    function acionarInstalacaoApp() {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
-      } else {
-        alert("Para instalar:\n• No Android/Chrome: Toque nos 3 pontinhos e 'Instalar aplicativo' ou 'Adicionar à tela inicial'.\n• No iPhone/Safari: Toque em Compartilhar e 'Adicionar à Tela de Início'.");
-      }
+    function formatarMoeda(val) {
+      return (Number(val) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
     function carregarMetasLocais() {
-      // Limpeza proativa de caches legados
-      ['vozfin_metas', 'vozfin_metas_12'].forEach(k => localStorage.removeItem(k));
-      const salvas = localStorage.getItem("vozfin_metas_v3");
+      const salvas = localStorage.getItem("vozfin_metas_v4");
       if (salvas) {
         try {
           const dict = JSON.parse(salvas);
-          return CATEGORIAS_PADRAO.map(c => ({
+          return CATEGORIAS_OFICIAIS.map(c => ({
             ...c,
             teto: dict[c.nome] !== undefined ? parseFloat(dict[c.nome]) : c.teto
           }));
         } catch(e) {}
       }
-      return JSON.parse(JSON.stringify(CATEGORIAS_PADRAO));
+      return JSON.parse(JSON.stringify(CATEGORIAS_OFICIAIS));
     }
 
     function carregarLancamentosLocais() {
-      // Limpeza proativa de caches de categorias antigas
-      ['vozfin_lancamentos', 'vozfin_lancamentos_v1', 'vozfin_lancamentos_v2'].forEach(k => localStorage.removeItem(k));
-      const dados = localStorage.getItem("vozfin_lancamentos_v3");
+      const dados = localStorage.getItem("vozfin_lancamentos_v4");
       if (dados) {
         try {
           const arr = JSON.parse(dados);
-          const nomesValidos = CATEGORIAS_PADRAO.map(c => c.nome);
+          const nomesValidos = CATEGORIAS_OFICIAIS.map(c => c.nome);
           return arr.map(item => {
             if (item.tipo === "Despesa" && !nomesValidos.includes(item.categoria)) {
               item.categoria = "OUTROS GASTOS";
@@ -548,15 +510,11 @@
     }
 
     function carregarHistoricoLocal() {
-      const dados = localStorage.getItem("vozfin_historico_meses");
+      const dados = localStorage.getItem("vozfin_historico_v4");
       if (dados) {
         try { return JSON.parse(dados); } catch(e) {}
       }
       return [];
-    }
-
-    function formatarMoeda(val) {
-      return (Number(val) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
     function mudarAba(aba) {
@@ -584,7 +542,7 @@
       });
     }
 
-    // INTERPRETADOR INTELIGENTE POR VOZ
+    // INTERPRETADOR POR VOZ COM PRIORIDADE TOTAL PARA CARTÃO DE CRÉDITO
     function interpretarFrase(texto) {
       if (!texto || !texto.trim()) return;
       const t = texto.toLowerCase();
@@ -617,10 +575,10 @@
         return;
       }
 
-      // 3. Caso contrário, é Despesa
+      // 3. Despesa
       document.getElementById("campo-tipo").value = "Despesa";
 
-      // 4. REGRA DE PRIORIDADE MÁXIMA: Falou 'cartão de crédito' ou 'crédito' -> vai DIRETO para a categoria 'CARTÃO' e forma 'Cartão de Crédito'
+      // 4. REGRA DE OURO: Se falou 'cartão de crédito' ou 'crédito' -> vai DIRETO e IMEDIATAMENTE para categoria 'CARTÃO' e forma 'Cartão de Crédito'
       const eCartaoCredito = (
         t.includes("cartão de crédito") || t.includes("cartao de credito") ||
         t.includes("no crédito") || t.includes("no credito") ||
@@ -637,7 +595,7 @@
         descSugerida = "Gasto no Cartão de Crédito";
         selecionarForma("Cartão de Crédito");
       } else {
-        // Mapear Formas de Pagamento para os demais casos
+        // Demais formas de pagamento
         if (t.includes("débito") || t.includes("debito") || t.includes("no débito") || t.includes("no debito")) {
           selecionarForma("Cartão de Débito");
         } else if (t.includes("vale") || t.includes("alimentação") || t.includes("refeição")) {
@@ -646,39 +604,38 @@
           selecionarForma("PIX");
         }
 
-        // Mapear estritamente as outras 11 Categorias Oficiais
+        // Demais 11 Categorias Oficiais
         if (t.includes("aluguel") || t.includes("imobiliaria") || t.includes("condomínio") || t.includes("condominio")) {
           catDetectada = "ALUGUEL";
           descSugerida = "Aluguel Mensal";
-        } else if (t.includes("parcela carro") || t.includes("parcela do carro") || t.includes("prestação do carro") || t.includes("prestacao carro") || t.includes("financiamento")) {
+        } else if (t.includes("parcela carro") || t.includes("parcela do carro") || t.includes("prestação do carro") || t.includes("financiamento")) {
           catDetectada = "PARCELA CARRO";
           descSugerida = "Parcela do Carro";
         } else if (t.includes("poupança") || t.includes("poupanca") || t.includes("guardar") || t.includes("reserva") || t.includes("investir")) {
           catDetectada = "POUPANÇA";
           descSugerida = "Poupança / Reserva";
-        } else if (t.includes("combustível") || t.includes("combustivel") || t.includes("gasolina") || t.includes("etanol") || t.includes("diesel") || t.includes("posto") || t.includes("abastecer")) {
+        } else if (t.includes("combustível") || t.includes("combustivel") || t.includes("gasolina") || t.includes("etanol") || t.includes("posto")) {
           catDetectada = "COMBUSTIVEL";
           descSugerida = "Combustível";
-        } else if (t.includes("plano de saúde") || t.includes("plano de saude") || t.includes("unimed") || t.includes("hapvida") || t.includes("médico") || t.includes("saúde")) {
+        } else if (t.includes("plano de saúde") || t.includes("plano de saude") || t.includes("unimed") || t.includes("médico")) {
           catDetectada = "PLANO DE SAUDE";
           descSugerida = "Plano de Saúde";
-        } else if (t.includes("luz") || t.includes("energia") || t.includes("enel") || t.includes("celpe") || t.includes("neoenergia")) {
+        } else if (t.includes("luz") || t.includes("energia") || t.includes("enel") || t.includes("celpe")) {
           catDetectada = "CONTA DE LUZ";
           descSugerida = "Conta de Luz";
-        } else if (t.includes("água") || t.includes("agua") || t.includes("compesa") || t.includes("cagece") || t.includes("sabesp") || t.includes("saneamento")) {
+        } else if (t.includes("água") || t.includes("agua") || t.includes("compesa") || t.includes("saneamento")) {
           catDetectada = "CONTA DE AGUA";
           descSugerida = "Conta de Água";
-        } else if (t.includes("internet") || t.includes("wifi") || t.includes("banda larga") || t.includes("fibra")) {
+        } else if (t.includes("internet") || t.includes("wifi") || t.includes("fibra")) {
           catDetectada = "CONTA DE INTERNET";
           descSugerida = "Conta de Internet";
-        } else if (t.includes("seguro") || t.includes("seguro moto") || t.includes("seguro carro") || t.includes("porto seguro")) {
+        } else if (t.includes("seguro") || t.includes("seguro moto") || t.includes("seguro carro")) {
           catDetectada = "SEGURO MOTO/CARRO";
           descSugerida = "Seguro Moto / Carro";
         } else if (t.includes("telefone") || t.includes("celular") || t.includes("vivo") || t.includes("claro") || t.includes("tim")) {
           catDetectada = "CONTA TELEFONE";
           descSugerida = "Conta de Telefone / Celular";
         } else {
-          // Qualquer outro gasto não previsto nas 11 vai estritamente para OUTROS GASTOS
           catDetectada = "OUTROS GASTOS";
         }
       }
@@ -697,15 +654,15 @@
       const pctEl = document.getElementById("alerta-teto-pct");
 
       if (tipo === "Receita") {
-        alerta.className = "text-xs p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between";
-        texto.innerText = `📈 Entrada: Adicionará ${formatarMoeda(val)} ao seu saldo livre!`;
-        pctEl.innerText = "+Receita";
+        alerta.className = "text-[11px] p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between";
+        texto.innerText = `📈 Entrada: Adicionará ${formatarMoeda(val)} ao saldo!`;
+        pctEl.innerText = "+Entrada";
         return;
       }
 
       const meta = METAS.find(m => m.nome === catNome);
       if (!meta) {
-        alerta.className = "text-xs p-2 rounded-lg bg-slate-800 text-[var(--muted-foreground)] flex items-center justify-between";
+        alerta.className = "text-[11px] p-2 rounded-lg bg-slate-800 text-[var(--muted-foreground)] flex items-center justify-between";
         texto.innerText = "Pronto para registrar despesa.";
         pctEl.innerText = "";
         return;
@@ -717,13 +674,13 @@
 
       pctEl.innerText = `${pct.toFixed(0)}%`;
       if (pct > 100) {
-        alerta.className = "text-xs p-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-between";
-        texto.innerText = `⚠️ Teto de ${formatarMoeda(meta.teto)} será estourado em ${formatarMoeda(novoTotal - meta.teto)}!`;
+        alerta.className = "text-[11px] p-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-between";
+        texto.innerText = `⚠️ Teto de ${formatarMoeda(meta.teto)} estourado em ${formatarMoeda(novoTotal - meta.teto)}!`;
       } else if (pct >= 75) {
-        alerta.className = "text-xs p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-between";
-        texto.innerText = `⚡ Atenção: Atingirá ${pct.toFixed(0)}% do teto (${formatarMoeda(novoTotal)} de ${formatarMoeda(meta.teto)})`;
+        alerta.className = "text-[11px] p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-between";
+        texto.innerText = `⚡ Atenção: Atingirá ${pct.toFixed(0)}% do teto (${formatarMoeda(novoTotal)})`;
       } else {
-        alerta.className = "text-xs p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between";
+        alerta.className = "text-[11px] p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between";
         texto.innerText = `✓ Dentro da meta: Sobrarão ${formatarMoeda(meta.teto - novoTotal)}`;
       }
     }
@@ -731,8 +688,7 @@
     function simularFala(frase) {
       document.getElementById("input-frase-voz").value = frase;
       interpretarFrase(frase);
-      const auto = document.getElementById("chk-autosave").checked;
-      if (auto) {
+      if (document.getElementById("chk-autosave").checked) {
         salvarLancamento();
       }
     }
@@ -740,18 +696,15 @@
     function alternarGravacaoVoz() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        alert("O reconhecimento por voz contínuo não é suportado neste navegador. Você pode digitar ou usar os botões rápidos!");
+        alert("Microfone não suportado no navegador atual. Use o teclado ou os botões de atalho!");
         return;
       }
 
       const btn = document.getElementById("btn-mic");
-      const lbl = document.getElementById("mic-label");
-
       if (gravando) {
         if (recognition) recognition.stop();
         gravando = false;
         btn.classList.remove("mic-recording");
-        lbl.innerText = "Falar Agora";
         return;
       }
 
@@ -763,7 +716,6 @@
       recognition.onstart = () => {
         gravando = true;
         btn.classList.add("mic-recording");
-        lbl.innerText = "Ouvindo...";
       };
 
       recognition.onresult = (e) => {
@@ -778,13 +730,11 @@
       recognition.onerror = () => {
         gravando = false;
         btn.classList.remove("mic-recording");
-        lbl.innerText = "Falar Agora";
       };
 
       recognition.onend = () => {
         gravando = false;
         btn.classList.remove("mic-recording");
-        lbl.innerText = "Falar Agora";
       };
 
       recognition.start();
@@ -797,7 +747,7 @@
       const descricao = document.getElementById("campo-desc").value || categoria;
 
       if (valor <= 0) {
-        alert("Por favor informe um valor maior que zero.");
+        alert("Informe um valor maior que zero.");
         return;
       }
 
@@ -815,57 +765,44 @@
       };
 
       lancamentos.unshift(novo);
-      localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
 
-      // Limpa inputs
       document.getElementById("campo-valor").value = "";
       document.getElementById("campo-desc").value = "";
       document.getElementById("input-frase-voz").value = "";
 
-      // Atualiza interface
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
       renderizarGraficoPizza();
       atualizarAlertaPreview();
 
-      // Envia ao backend local para salvar no Excel se disponível
-      enviarAoBackend(novo);
-    }
-
-    function enviarAoBackend(item) {
-      const urls = [
-        "https://grant-forms-hotels-december.trycloudflare.com/api/lancamentos",
-        "http://127.0.0.1:8090/api/lancamentos"
-      ];
-      urls.forEach(url => {
-        fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(item)
-        }).catch(() => {});
-      });
+      // Envia ao backend local
+      fetch("http://127.0.0.1:8090/api/lancamentos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novo)
+      }).catch(() => {});
     }
 
     function excluirLancamento(id) {
-      if (!confirm("Deseja realmente remover este lançamento?")) return;
+      if (!confirm("Remover este lançamento?")) return;
       lancamentos = lancamentos.filter(l => l.id !== id);
-      localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
       renderizarGraficoPizza();
-
-      // Envia exclusão ao backend
       fetch(`http://127.0.0.1:8090/api/lancamentos/${id}`, { method: "DELETE" }).catch(() => {});
     }
 
-    // BOTÃO DE CORTE DE MÊS
+    // =========================================================================
+    // FLUXO DO BOTÃO DE CORTE (FECHAMENTO DE MÊS)
+    // =========================================================================
     function abrirModalCorte() {
       const agora = new Date();
-      const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-      const mesSugerido = `${nomesMeses[agora.getMonth()]}/${agora.getFullYear()}`;
-      document.getElementById("input-corte-mes").value = mesSugerido;
+      const nomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      document.getElementById("input-corte-mes").value = `${nomes[agora.getMonth()]}/${agora.getFullYear()}`;
 
       const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
       const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
@@ -894,12 +831,6 @@
       const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
       const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
 
-      // Snapshot detalhado por categoria
-      const porCategoria = {};
-      METAS.forEach(m => {
-        porCategoria[m.nome] = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
-      });
-
       const snapshot = {
         id: Date.now(),
         mesReferencia: mesRef,
@@ -912,18 +843,17 @@
         totalDebito: deb,
         totalVa: va,
         qtdLancamentos: lancamentos.length,
-        porCategoria: porCategoria,
         lancamentos: [...lancamentos]
       };
 
       historicoMeses.unshift(snapshot);
-      localStorage.setItem("vozfin_historico_meses", JSON.stringify(historicoMeses));
+      localStorage.setItem("vozfin_historico_v4", JSON.stringify(historicoMeses));
 
       // ZERA TUDO PARA O NOVO MÊS
       lancamentos = [];
-      localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify([]));
+      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify([]));
 
-      // Envia corte para a planilha via backend
+      // Envia corte para a planilha no Excel
       fetch("http://127.0.0.1:8090/api/corte", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -956,14 +886,14 @@
     function abrirModalEditarMetas() {
       const container = document.getElementById("campos-edicao-metas");
       container.innerHTML = METAS.map(m => `
-        <div class="flex items-center justify-between p-2 rounded-xl bg-[var(--background)] border border-[var(--border)]">
+        <div class="flex items-center justify-between p-2 rounded-xl bg-[var(--card-inner)] border border-[var(--border)]">
           <div class="flex items-center gap-2">
-            <span class="text-base">${m.icone}</span>
-            <span class="font-bold">${m.nome}</span>
+            <span>${m.icone}</span>
+            <span class="font-bold text-xs">${m.nome}</span>
           </div>
           <div class="flex items-center gap-1">
-            <span class="text-[var(--muted-foreground)]">R$</span>
-            <input type="number" step="10" id="input-meta-${m.nome.replace(/\s+/g, '_')}" value="${m.teto}" class="w-24 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1 text-right font-bold font-mono text-emerald-400" />
+            <span class="text-[var(--muted-foreground)] text-xs">R$</span>
+            <input type="number" step="10" id="input-meta-${m.nome.replace(/\s+/g, '_')}" value="${m.teto}" class="w-20 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1 text-right font-bold font-mono text-emerald-400 text-xs" />
           </div>
         </div>
       `).join("");
@@ -984,9 +914,7 @@
           dict[m.nome] = val;
         }
       });
-      localStorage.setItem("vozfin_metas_v3", JSON.stringify(dict));
-
-      // Envia ao backend para atualizar o Excel
+      localStorage.setItem("vozfin_metas_v4", JSON.stringify(dict));
       fetch("http://127.0.0.1:8090/api/metas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -999,15 +927,15 @@
       renderizarGraficoPizza();
     }
 
-    // ABA 4: HISTÓRICO DE MESES ANTERIORES
+    // ABA 4: MESES ANTERIORES
     function atualizarAbaMesesAnteriores() {
       const select = document.getElementById("select-mes-historico");
       if (!historicoMeses.length) {
         select.innerHTML = '<option value="">Nenhum mês arquivado ainda</option>';
         document.getElementById("conteudo-mes-historico").innerHTML = `
-          <div class="text-center py-8 text-[var(--muted-foreground)] text-xs">
-            Nenhum fechamento de mês realizado ainda.<br>
-            Quando seu mês terminar, clique em <strong class="text-purple-400">"✂️ Fazer Corte de Mês"</strong> no topo para arquivar seus gastos e começar o próximo mês zerado!
+          <div class="text-center py-6 text-[var(--muted-foreground)] text-xs">
+            Nenhum fechamento realizado ainda.<br>
+            Clique no botão roxo <strong class="text-purple-400">"✂️ Fazer Corte"</strong> no topo para arquivar este mês e iniciar o próximo zerado!
           </div>
         `;
         return;
@@ -1026,66 +954,45 @@
 
       const container = document.getElementById("conteudo-mes-historico");
       container.innerHTML = `
-        <div class="bg-[var(--background)] p-4 rounded-xl border border-[var(--border)] space-y-3">
-          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+        <div class="bg-[var(--card-inner)] p-3 rounded-xl border border-[var(--border)] space-y-2.5">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
             <div>
-              <span class="text-xs text-[var(--muted-foreground)]">Fechamento do Mês:</span>
-              <div class="text-base font-black text-purple-400">${item.mesReferencia}</div>
+              <span class="text-[10px] text-[var(--muted-foreground)] uppercase">Mês Arquivado</span>
+              <div class="text-sm font-black text-purple-300">${item.mesReferencia}</div>
             </div>
-            <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-[var(--border)] font-mono text-[var(--muted-foreground)]">
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-[var(--border)] text-[var(--muted-foreground)] font-mono">
               ${item.dataFechamento}
             </span>
           </div>
 
-          <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="bg-[var(--card)] p-2 rounded-xl border border-[var(--border)]">
-              <span class="text-[10px] text-[var(--muted-foreground)]">Entradas</span>
-              <div class="text-xs sm:text-sm font-bold font-mono text-emerald-400">${formatarMoeda(item.totalReceitas)}</div>
+          <div class="grid grid-cols-3 gap-1.5 text-center text-xs">
+            <div class="bg-[var(--card)] p-1.5 rounded-lg border border-[var(--border)]">
+              <span class="text-[9px] text-[var(--muted-foreground)]">Entradas</span>
+              <div class="text-xs font-bold font-mono text-emerald-400">${formatarMoeda(item.totalReceitas)}</div>
             </div>
-            <div class="bg-[var(--card)] p-2 rounded-xl border border-[var(--border)]">
-              <span class="text-[10px] text-[var(--muted-foreground)]">Gastos</span>
-              <div class="text-xs sm:text-sm font-bold font-mono text-rose-400">${formatarMoeda(item.totalDespesas)}</div>
+            <div class="bg-[var(--card)] p-1.5 rounded-lg border border-[var(--border)]">
+              <span class="text-[9px] text-[var(--muted-foreground)]">Gastos</span>
+              <div class="text-xs font-bold font-mono text-rose-400">${formatarMoeda(item.totalDespesas)}</div>
             </div>
-            <div class="bg-[var(--card)] p-2 rounded-xl border border-[var(--border)]">
-              <span class="text-[10px] text-[var(--muted-foreground)]">Saldo Livre</span>
-              <div class="text-xs sm:text-sm font-bold font-mono ${item.saldoFinal >= 0 ? 'text-teal-400' : 'text-rose-400'}">${formatarMoeda(item.saldoFinal)}</div>
-            </div>
-          </div>
-
-          <!-- Divisão de Pagamento daquele mês -->
-          <div class="grid grid-cols-4 gap-1.5 text-center text-xs">
-            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
-              <span class="text-[10px] text-teal-400 font-bold block">PIX</span>
-              <span class="font-mono text-[11px]">${formatarMoeda(item.totalPix)}</span>
-            </div>
-            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
-              <span class="text-[10px] text-purple-400 font-bold block">Crédito</span>
-              <span class="font-mono text-[11px]">${formatarMoeda(item.totalCredito)}</span>
-            </div>
-            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
-              <span class="text-[10px] text-sky-400 font-bold block">Débito</span>
-              <span class="font-mono text-[11px]">${formatarMoeda(item.totalDebito)}</span>
-            </div>
-            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
-              <span class="text-[10px] text-amber-400 font-bold block">Vale</span>
-              <span class="font-mono text-[11px]">${formatarMoeda(item.totalVa)}</span>
+            <div class="bg-[var(--card)] p-1.5 rounded-lg border border-[var(--border)]">
+              <span class="text-[9px] text-[var(--muted-foreground)]">Saldo</span>
+              <div class="text-xs font-bold font-mono ${item.saldoFinal >= 0 ? 'text-teal-400' : 'text-rose-400'}">${formatarMoeda(item.saldoFinal)}</div>
             </div>
           </div>
 
-          <!-- Extrato Arquivado do Mês -->
-          <div class="pt-2">
-            <div class="text-xs font-bold mb-2 flex justify-between items-center">
-              <span>Lançamentos Registrados neste Mês (${item.lancamentos ? item.lancamentos.length : 0}):</span>
-              <button onclick="exportarMesCSV(${idx})" class="text-[11px] text-emerald-400 hover:underline">📥 Baixar CSV</button>
+          <div class="pt-1">
+            <div class="text-[11px] font-bold mb-1.5 flex justify-between items-center">
+              <span>Lançamentos (${item.lancamentos ? item.lancamentos.length : 0}):</span>
+              <button onclick="exportarMesCSV(${idx})" class="text-[10px] text-emerald-400 hover:underline">📥 Baixar CSV</button>
             </div>
-            <div class="space-y-1.5 max-h-60 overflow-y-auto">
+            <div class="space-y-1 max-h-48 overflow-y-auto pr-1">
               ${(item.lancamentos || []).map(l => `
-                <div class="p-2 rounded-xl bg-[var(--card)] border border-[var(--border)] flex items-center justify-between text-xs">
+                <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-between text-[11px]">
                   <div>
                     <div class="font-bold">${l.descricao || l.categoria}</div>
-                    <div class="text-[10px] text-[var(--muted-foreground)]">${l.data} • ${l.categoria} • <span class="text-emerald-400 font-semibold">${l.formaPagamento}</span></div>
+                    <div class="text-[9px] text-[var(--muted-foreground)]">${l.data} • ${l.categoria} • <span class="text-emerald-400">${l.formaPagamento}</span></div>
                   </div>
-                  <div class="text-right font-mono font-bold ${l.tipo === 'Receita' ? 'text-emerald-400' : 'text-rose-400'}">
+                  <div class="font-mono font-bold ${l.tipo === 'Receita' ? 'text-emerald-400' : 'text-rose-400'}">
                     ${l.tipo === 'Receita' ? '+' : '-'}${formatarMoeda(l.valor)}
                   </div>
                 </div>
@@ -1111,7 +1018,7 @@
       a.click();
     }
 
-    // ATUALIZAÇÃO DOS KPIS E CARDS PRINCIPAIS
+    // ATUALIZAÇÃO DOS KPIS
     function atualizarKPIs() {
       const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
       const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
@@ -1121,7 +1028,6 @@
       const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
       const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
 
-      // Saldo Livre = Dinheiro que entrou (Receitas em conta) - Saídas imediatas da conta (PIX e Débito)
       const saldoLivre = rec - (pix + deb);
 
       document.getElementById("kpi-saldo-livre").innerText = formatarMoeda(saldoLivre);
@@ -1130,27 +1036,24 @@
 
       const tetoTotal = METAS.reduce((a, b) => a + b.teto, 0);
       const pctGlobal = tetoTotal > 0 ? (desp / tetoTotal) * 100 : 0;
-      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(1)}% de ${formatarMoeda(tetoTotal)}`;
+      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
       document.getElementById("kpi-bar-global").style.width = `${Math.min(pctGlobal, 100)}%`;
       document.getElementById("kpi-bar-global").className = pctGlobal > 100 ? "bg-rose-500 h-full rounded-full transition-all" : (pctGlobal >= 75 ? "bg-amber-500 h-full rounded-full transition-all" : "bg-emerald-500 h-full rounded-full transition-all");
 
-      // Formas de Pagamento
       document.getElementById("val-pix").innerText = formatarMoeda(pix);
       document.getElementById("pct-pix").innerText = `${((pix / 7500) * 100).toFixed(0)}%`;
 
       document.getElementById("val-credito").innerText = formatarMoeda(cred);
-      document.getElementById("pct-credito").innerText = `${((cred / 2500) * 100).toFixed(0)}%`;
+      document.getElementById("pct-credito").innerText = `${((cred / 2700) * 100).toFixed(0)}%`;
 
       document.getElementById("val-debito").innerText = formatarMoeda(deb);
       document.getElementById("pct-debito").innerText = `${((deb / 1500) * 100).toFixed(0)}%`;
 
       document.getElementById("val-va").innerText = formatarMoeda(va);
       document.getElementById("pct-va").innerText = `${((va / 690) * 100).toFixed(0)}%`;
-
-      document.getElementById("count-lanc").innerText = lancamentos.length;
     }
 
-    // RENDERIZAÇÃO DAS 12 METAS COM BARRA DE PROGRESSO
+    // RENDERIZAÇÃO DAS 12 METAS
     function renderizarTetos() {
       const container = document.getElementById("lista-tetos");
       container.innerHTML = METAS.map(m => {
@@ -1159,29 +1062,29 @@
         const pct = m.teto > 0 ? (gasto / m.teto) * 100 : 0;
 
         let corBar = "bg-emerald-500";
-        let statusBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono">Sobra ${formatarMoeda(restante)}</span>`;
+        let statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-mono">Sobra ${formatarMoeda(restante)}</span>`;
         if (pct > 100) {
           corBar = "bg-rose-500";
-          statusBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 font-mono font-bold">Estourou +${formatarMoeda(Math.abs(restante))}</span>`;
+          statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 font-mono font-bold">+${formatarMoeda(Math.abs(restante))}</span>`;
         } else if (pct >= 75) {
           corBar = "bg-amber-500";
-          statusBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">Alerta: ${pct.toFixed(0)}%</span>`;
+          statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono font-bold">${pct.toFixed(0)}%</span>`;
         }
 
         return `
-          <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+          <div class="p-2.5 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] space-y-1.5">
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-base">${m.icone}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm">${m.icone}</span>
                 <span class="font-bold text-xs">${m.nome}</span>
               </div>
               ${statusBadge}
             </div>
-            <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <div class="flex items-center justify-between text-[11px] text-[var(--muted-foreground)]">
               <span>Gasto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(gasto)}</strong></span>
               <span>Teto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(m.teto)}</strong></span>
             </div>
-            <div class="w-full bg-[var(--card)] h-2 rounded-full overflow-hidden border border-[var(--border)]">
+            <div class="w-full bg-[var(--card)] h-1.5 rounded-full overflow-hidden border border-[var(--border)]">
               <div class="${corBar} h-full rounded-full transition-all" style="width: ${Math.min(pct, 100)}%"></div>
             </div>
           </div>
@@ -1189,7 +1092,7 @@
       }).join("");
     }
 
-    // GRÁFICO DE PIZZA DINÂMICO SVG
+    // GRÁFICO DE PIZZA
     function renderizarGraficoPizza() {
       const svg = document.getElementById("svg-pie");
       const centerVal = document.getElementById("pie-center-val");
@@ -1206,16 +1109,16 @@
       badgeTotal.innerText = formatarMoeda(totalGastos);
 
       if (totalGastos === 0) {
-        svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="transparent" stroke="#334155" stroke-width="20" />';
+        svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />';
         legend.innerHTML = `
-          <div class="text-[var(--muted-foreground)] text-xs text-center sm:text-left py-4">
-            Nenhum gasto lançado ainda neste mês. Toque no microfone acima para registrar o primeiro!
+          <div class="text-[var(--muted-foreground)] text-[11px] text-center py-3">
+            Nenhum gasto lançado ainda. Toque no microfone acima para registrar o primeiro!
           </div>
         `;
         return;
       }
 
-      const circ = 2 * Math.PI * 40; // ~251.327
+      const circ = 2 * Math.PI * 40;
       let acumulado = 0;
       let svgHtml = "";
       let legendHtml = "";
@@ -1232,18 +1135,18 @@
             stroke="${d.cor}" stroke-width="20"
             stroke-dasharray="${strokeDasharray}"
             stroke-dashoffset="${strokeDashoffset}"
-            class="transition-all duration-500 hover:opacity-80 cursor-pointer" />
+            class="transition-all duration-500" />
         `;
 
         legendHtml += `
-          <div class="flex items-center justify-between py-1 border-b border-[var(--border)] last:border-0">
-            <div class="flex items-center gap-2">
-              <span class="w-3 h-3 rounded-full" style="background-color: ${d.cor}"></span>
-              <span class="font-bold text-[11px]">${d.icone} ${d.nome}</span>
+          <div class="flex items-center justify-between py-0.5 border-b border-[var(--border)] last:border-0 text-[11px]">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.cor}"></span>
+              <span class="font-bold">${d.icone} ${d.nome}</span>
             </div>
-            <div class="font-mono text-[11px]">
+            <div class="font-mono">
               <strong>${formatarMoeda(d.valor)}</strong>
-              <span class="text-[var(--muted-foreground)] ml-1">(${(pct * 100).toFixed(0)}%)</span>
+              <span class="text-[var(--muted-foreground)] text-[10px]">(${(pct * 100).toFixed(0)}%)</span>
             </div>
           </div>
         `;
@@ -1253,7 +1156,7 @@
       legend.innerHTML = legendHtml;
     }
 
-    // RENDERIZAÇÃO DO EXTRATO DE LANÇAMENTOS DO MÊS ATUAL
+    // EXTRATO
     function filtrarExtrato(filtro) {
       filtroAtual = filtro;
       renderizarExtrato();
@@ -1267,8 +1170,8 @@
 
       if (!filtrados.length) {
         container.innerHTML = `
-          <div class="text-center py-8 text-[var(--muted-foreground)] text-xs">
-            Nenhum lançamento no extrato para o filtro selecionado.
+          <div class="text-center py-6 text-[var(--muted-foreground)] text-xs">
+            Nenhum lançamento no extrato.
           </div>
         `;
         return;
@@ -1277,30 +1180,29 @@
       container.innerHTML = filtrados.map(l => {
         const isRec = l.tipo === "Receita";
         return `
-          <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-lg ${isRec ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center font-bold text-xs">
+          <div class="p-2 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg ${isRec ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center font-bold text-xs shrink-0">
                 ${isRec ? '↗' : '↘'}
               </div>
               <div>
-                <div class="font-bold text-xs">${l.descricao || l.categoria}</div>
-                <div class="text-[11px] text-[var(--muted-foreground)]">
+                <div class="font-bold text-[11px]">${l.descricao || l.categoria}</div>
+                <div class="text-[9px] text-[var(--muted-foreground)]">
                   ${l.data} • <span class="font-semibold text-teal-400">${l.formaPagamento}</span> • ${l.categoria}
                 </div>
               </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5">
               <span class="font-mono font-bold text-xs ${isRec ? 'text-emerald-400' : 'text-rose-400'}">
                 ${isRec ? '+' : '-'}${formatarMoeda(l.valor)}
               </span>
-              <button onclick="excluirLancamento(${l.id})" class="text-xs px-2 py-1 rounded-lg text-rose-400 hover:bg-rose-500/10">🗑️</button>
+              <button onclick="excluirLancamento(${l.id})" class="text-xs px-1.5 py-0.5 rounded text-rose-400 hover:bg-rose-500/10">🗑️</button>
             </div>
           </div>
         `;
       }).join("");
     }
 
-    // MODAL QR CODE
     function abrirModalQR() {
       document.getElementById("modal-qr").classList.remove("hidden");
     }
@@ -1308,36 +1210,16 @@
       document.getElementById("modal-qr").classList.add("hidden");
     }
 
-    // SINCRONIZAÇÃO COM BACKEND LOCAL
-    function sincronizarAgora() {
-      const badge = document.getElementById("sheet-badge");
-      badge.innerText = "Sincronizando...";
-      badge.className = "text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-medium";
-
-      fetch("http://127.0.0.1:8090/api/lancamentos")
-        .then(r => r.json())
-        .then(data => {
-          if (data.status === "ok" && Array.isArray(data.lancamentos)) {
-            const nomesValidos = CATEGORIAS_PADRAO.map(c => c.nome);
-            lancamentos = data.lancamentos.map(item => {
-              if (item.tipo === "Despesa" && !nomesValidos.includes(item.categoria)) {
-                item.categoria = "OUTROS GASTOS";
-              }
-              return item;
-            });
-            localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify(lancamentos));
-            atualizarKPIs();
-            renderizarTetos();
-            renderizarExtrato();
-            renderizarGraficoPizza();
-            badge.innerText = "Planilha Conectada ✓";
-            badge.className = "text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium";
-          }
-        })
-        .catch(() => {
-          badge.innerText = "Modo Local / PWA ✓";
-          badge.className = "text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 border border-slate-600 font-medium";
+    function forcarAtualizacaoTotal() {
+      localStorage.clear();
+      sessionStorage.clear();
+      if ('caches' in window) {
+        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+          window.location.reload(true);
         });
+      } else {
+        window.location.reload(true);
+      }
     }
 
     // INICIALIZAÇÃO
@@ -1347,7 +1229,6 @@
       renderizarExtrato();
       renderizarGraficoPizza();
       atualizarAbaMesesAnteriores();
-      sincronizarAgora();
     };
   </script>
 </body>
