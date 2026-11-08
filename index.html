@@ -11,7 +11,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="VozFin">
   <link rel="manifest" href="./manifest.json">
-  <link rel="apple-touch-icon" href="./icon-512.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="./icon-512.png">
   <title>VozFin — Controle Financeiro por Voz</title>
   <!-- Biblioteca Excel SheetJS (Download .xlsx no celular com 1 clique) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -63,9 +64,7 @@
     <!-- HEADER COMPACTO COM STATUS DE SINCRONIZAÇÃO EM TEMPO REAL -->
     <header class="hidden bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-md flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
-          🎙️
-        </div>
+        <img src="./icon-192.png" alt="VozFin" class="w-9 h-9 rounded-xl shadow-sm border border-sky-400/40 object-cover" />
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="font-extrabold text-sm tracking-tight">VozFin</h1>
