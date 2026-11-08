@@ -1,0 +1,10 @@
+{
+  "name": "VozFin — Controle de Gastos por Voz",
+  "short_name": "VozFin",
+  "description": "Controle financeiro por comando de voz integrado à planilha do Google Sheets",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#059669",
+  "orientation": "portrait"
+}
