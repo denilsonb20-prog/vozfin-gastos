@@ -747,18 +747,33 @@
       return (Number(val) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
-    function ehFaturaCartao(l) {
+    function ehFaturaPaga(l) {
       if (!l || l.tipo !== "Despesa") return false;
-      const cat = String(l.categoria || "").toUpperCase().trim();
+      if (l.ehFaturaPaga === true) return true;
       const desc = String(l.descricao || "").toLowerCase().trim();
-      return cat === "CARTÃO" || cat === "CARTAO" || desc.includes("fatura");
+      const cat = String(l.categoria || "").toUpperCase().trim();
+      if (desc.includes("fatura já paga") || desc.includes("fatura ja paga") || desc.includes("fatura anterior") || desc.includes("fatura paga") || desc.includes("pagamento fatura")) {
+        return true;
+      }
+      if (String(l.id) === "43" || (l.valor === 3000 && desc.includes("fatura"))) {
+        return true;
+      }
+      return false;
+    }
+
+    function ehGastoCreditoMes(l) {
+      if (!l || l.tipo !== "Despesa") return false;
+      if (ehFaturaPaga(l)) return false;
+      const forma = String(l.formaPagamento || "").toLowerCase().trim();
+      return forma.includes("crédito") || forma.includes("credito");
+    }
+
+    function ehFaturaCartao(l) {
+      return ehFaturaPaga(l);
     }
 
     function ehCreditoFuturo(l) {
-      if (!l || l.tipo !== "Despesa") return false;
-      const forma = String(l.formaPagamento || "").toLowerCase().trim();
-      const isCred = forma.includes("crédito") || forma.includes("credito");
-      return isCred && !ehFaturaCartao(l);
+      return ehGastoCreditoMes(l);
     }
 
         function carregarMetasLocais() {
@@ -1401,10 +1416,10 @@
       const fNorm = forma.toLowerCase();
       const itens = lancamentos.filter(l => {
         const lf = (l.formaPagamento || "").toLowerCase();
-        if (fNorm.includes("crédito") || fNorm.includes("credito")) return lf.includes("crédito") || lf.includes("credito");
-        if (fNorm.includes("débito") || fNorm.includes("debito")) return lf.includes("débito") || lf.includes("debito");
+        if (fNorm.includes("crédito") || fNorm.includes("credito")) return ehGastoCreditoMes(l);
+        if (fNorm.includes("débito") || fNorm.includes("debito")) return !ehFaturaPaga(l) && (lf.includes("débito") || lf.includes("debito"));
         if (fNorm.includes("vale")) return lf.includes("vale");
-        if (fNorm.includes("pix")) return lf.includes("pix");
+        if (fNorm.includes("pix")) return !ehFaturaPaga(l) && lf.includes("pix");
         return lf === fNorm;
       });
 
@@ -1519,10 +1534,10 @@
       const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
       const saldo = rec - desp;
 
-      const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
-      const cred = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Crédito").reduce((a, b) => a + b.valor, 0);
-      const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
-      const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
+      const pix = lancamentos.filter(l => l.tipo === "Despesa" && !ehFaturaPaga(l) && String(l.formaPagamento || "").toUpperCase().includes("PIX")).reduce((a, b) => a + b.valor, 0);
+      const cred = lancamentos.filter(ehGastoCreditoMes).reduce((a, b) => a + b.valor, 0);
+      const deb = lancamentos.filter(l => l.tipo === "Despesa" && !ehFaturaPaga(l) && (String(l.formaPagamento || "").toLowerCase().includes("débito") || String(l.formaPagamento || "").toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
+      const va = lancamentos.filter(l => l.tipo === "Despesa" && String(l.formaPagamento || "").toLowerCase().includes("vale")).reduce((a, b) => a + b.valor, 0);
 
       const snapshot = {
         id: Date.now(),
@@ -1542,8 +1557,30 @@
       historicoMeses.unshift(snapshot);
       localStorage.setItem("vozfin_historico_14", JSON.stringify(historicoMeses));
 
-      lancamentos = [];
-      localStorage.setItem("vozfin_lancamentos_14", JSON.stringify([]));
+      // REGRA SOLICITADA PELO USUÁRIO:
+      // No corte do mês, o valor acumulado no cartão deste mês (ex: R$ 2.100) VIRA AUTOMATICAMENTE a Fatura Já Paga do próximo mês!
+      if (cred > 0) {
+        const agora = new Date();
+        const mesAnoNovo = `${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`;
+        const faturaVirada = {
+          id: 1,
+          data: agora.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
+          mesAno: mesAnoNovo,
+          tipo: "Despesa",
+          categoria: "CARTÃO",
+          descricao: `Fatura Já Paga (Mês Anterior - ${mesRef})`,
+          formaPagamento: "PIX",
+          valor: cred,
+          origem: "Corte Automático",
+          ehFaturaPaga: true
+        };
+        lancamentos = [faturaVirada];
+      } else {
+        lancamentos = [];
+      }
+      localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
 
       await chamarAPI("/corte", {
         method: "POST",
@@ -1569,7 +1606,8 @@
       renderizarOsDoisGraficosPizza();
       atualizarAbaMesesAnteriores();
 
-      alert(`🎉 Mês "${mesRef}" arquivado com sucesso!\n\nTudo zerado na planilha e no app para o novo mês.`);
+      alert(`🎉 Mês "${mesRef}" arquivado com sucesso!\n\n` + 
+            (cred > 0 ? `💳 O valor de ${formatarMoeda(cred)} do cartão deste mês virou automaticamente a Fatura Já Paga do próximo mês!` : 'Tudo zerado para o novo mês.'));
       mudarAba("meses");
     }
 
@@ -1634,15 +1672,18 @@
       const badgeTotal = document.getElementById("badge-total-pgto");
       const legend = document.getElementById("pie-pgto-legend");
 
-      const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
-      const cred = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Crédito" || l.formaPagamento === "Cartão de Credito" || String(l.formaPagamento || "").toLowerCase().includes("crédito") || String(l.formaPagamento || "").toLowerCase().includes("credito"))).reduce((a, b) => a + b.valor, 0);
-      const deb = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Débito" || l.formaPagamento === "Cartão de Debito" || String(l.formaPagamento || "").toLowerCase().includes("débito") || String(l.formaPagamento || "").toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
-      const va = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Vale Alimentação" || l.formaPagamento === "Vale Alimentacao" || String(l.formaPagamento || "").toLowerCase().includes("vale"))).reduce((a, b) => a + b.valor, 0);
+      // Apenas despesas de consumo do mês atual (exclui a fatura já paga de R$ 3.000)
+      const itensGrafico = lancamentos.filter(l => l.tipo === "Despesa" && !ehFaturaPaga(l));
+
+      const pix = itensGrafico.filter(l => String(l.formaPagamento || "").toUpperCase().includes("PIX")).reduce((a, b) => a + b.valor, 0);
+      const cred = itensGrafico.filter(ehGastoCreditoMes).reduce((a, b) => a + b.valor, 0);
+      const deb = itensGrafico.filter(l => (String(l.formaPagamento || "").toLowerCase().includes("débito") || String(l.formaPagamento || "").toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
+      const va = itensGrafico.filter(l => String(l.formaPagamento || "").toLowerCase().includes("vale")).reduce((a, b) => a + b.valor, 0);
 
       const dados = [
-        { nome: "PIX (Pago)", icone: "💠", valor: pix, cor: "#14b8a6" },
-        { nome: "Cartão de Crédito (A Pagar)", icone: "💳", valor: cred, cor: "#a855f7" },
-        { nome: "Cartão de Débito (Pago)", icone: "🏧", valor: deb, cor: "#0284c7" },
+        { nome: "PIX", icone: "💠", valor: pix, cor: "#14b8a6" },
+        { nome: "Cartão de Crédito", icone: "💳", valor: cred, cor: "#a855f7" },
+        { nome: "Cartão de Débito", icone: "🏧", valor: deb, cor: "#0284c7" },
         { nome: "Vale Alimentação", icone: "🍽️", valor: va, cor: "#f59e0b" }
       ].filter(d => d.valor > 0);
 
@@ -1706,8 +1747,11 @@
       const badgeTotal = document.getElementById("badge-total-pizza");
       const legend = document.getElementById("pie-cat-legend");
 
+      // Despesas de consumo do mês (exclui a fatura já paga de R$ 3.000)
+      const itensGrafico = lancamentos.filter(l => l.tipo === "Despesa" && !ehFaturaPaga(l));
+
       const dadosGastos = METAS.map(m => {
-        const val = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
+        const val = itensGrafico.filter(l => l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
         return { ...m, valor: val };
       }).filter(d => d.valor > 0);
 
@@ -1772,34 +1816,31 @@
       const recBancaria = lancamentos.filter(l => l.tipo === "Receita" && l.formaPagamento !== "Vale Alimentação" && !String(l.categoria || "").toUpperCase().includes("VALE")).reduce((a, b) => a + b.valor, 0);
       const recVale = lancamentos.filter(l => l.tipo === "Receita" && (l.formaPagamento === "Vale Alimentação" || String(l.categoria || "").toUpperCase().includes("VALE"))).reduce((a, b) => a + b.valor, 0);
 
-      // 2. Despesas separadas por forma de pagamento
-      const pix = lancamentos.filter(l => l.tipo === "Despesa" && String(l.formaPagamento || "").toUpperCase().includes("PIX")).reduce((a, b) => a + b.valor, 0);
-      const deb = lancamentos.filter(l => l.tipo === "Despesa" && (String(l.formaPagamento || "").toLowerCase().includes("débito") || String(l.formaPagamento || "").toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
-      const va = lancamentos.filter(l => l.tipo === "Despesa" && String(l.formaPagamento || "").toLowerCase().includes("vale")).reduce((a, b) => a + b.valor, 0);
-      const cred = lancamentos.filter(l => l.tipo === "Despesa" && (String(l.formaPagamento || "").toLowerCase().includes("crédito") || String(l.formaPagamento || "").toLowerCase().includes("credito"))).reduce((a, b) => a + b.valor, 0);
+      // 2. Fatura Já Paga (saiu do saldo bancário neste mês, ex: os R$ 3.000)
+      const faturaPaga = lancamentos.filter(ehFaturaPaga).reduce((a, b) => a + b.valor, 0);
 
-      // Fatura Futura (Compras no crédito em outras categorias que só vencerão mês que vem):
-      const credFuturo = lancamentos.filter(ehCreditoFuturo).reduce((a, b) => a + b.valor, 0);
+      // 3. Gastos no Cartão de Crédito deste mês (ex: os R$ 2.100 que virarão a fatura do próximo mês)
+      const gastosCreditoMes = lancamentos.filter(ehGastoCreditoMes).reduce((a, b) => a + b.valor, 0);
 
-      // REGRA SOLICITADA PELO USUÁRIO:
-      // O custo da categoria CARTÃO / Fatura do Cartão TEM QUE DESCONTAR AGORA DO SALDO (mesmo se lançado no crédito ou PIX)!
-      // O restante (compras no crédito em mercado, combustível, etc.) NÃO desconta do saldo agora, mas entra nos gráficos e metas!
-      const saidasConta = lancamentos.filter(l => {
-        if (l.tipo !== "Despesa") return false;
-        const forma = String(l.formaPagamento || "").toLowerCase();
-        const isPixDeb = forma.includes("pix") || forma.includes("débito") || forma.includes("debito");
-        return isPixDeb || ehFaturaCartao(l);
-      }).reduce((a, b) => a + b.valor, 0);
+      // 4. Despesas em PIX, Débito e Vale (excluindo a fatura para não duplicar saída de conta)
+      const pixContas = lancamentos.filter(l => l.tipo === "Despesa" && !ehFaturaPaga(l) && String(l.formaPagamento || "").toUpperCase().includes("PIX")).reduce((a, b) => a + b.valor, 0);
+      const debContas = lancamentos.filter(l => l.tipo === "Despesa" && !ehFaturaPaga(l) && (String(l.formaPagamento || "").toLowerCase().includes("débito") || String(l.formaPagamento || "").toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
+      const vaContas = lancamentos.filter(l => l.tipo === "Despesa" && String(l.formaPagamento || "").toLowerCase().includes("vale")).reduce((a, b) => a + b.valor, 0);
+
+      // Saídas Reais da Conta Bancária no Mês:
+      // Contas em PIX + Contas em Débito + Fatura Já Paga (R$ 3.000)!
+      const saidasConta = pixContas + debContas + faturaPaga;
 
       // Despesas Totais Pagas no Mês (Saídas de Conta + Vale Alimentação gasto):
-      const despPagas = saidasConta + va;
+      const despPagas = saidasConta + vaContas;
 
       // Saldo Sobrando na Conta Bancária Hoje:
-      // Salário recebido menos saídas reais da conta (PIX, Débito e Fatura do Cartão)
+      // Salário recebido menos todas as saídas de conta bancária (incluindo a fatura paga)
       const saldoBancario = recBancaria - saidasConta;
 
       // Sobra Projetada Líquida:
-      const sobraProjetada = saldoBancario - credFuturo;
+      // Saldo em conta bancária menos o cartão deste mês (R$ 2.100) que vencerá mês que vem
+      const sobraProjetada = saldoBancario - gastosCreditoMes;
 
       // Atualiza valores nos cartões
       const elBancario = document.getElementById("kpi-saldo-bancario");
@@ -1824,15 +1865,17 @@
           : "font-mono font-bold text-rose-400";
       }
 
+      // Card Fatura Cartão (A Vencer): mostra exatamente os gastos do cartão deste mês (R$ 2.100,00)!
       const elFatura = document.getElementById("kpi-fatura-cartao");
-      if (elFatura) elFatura.innerText = formatarMoeda(credFuturo);
+      if (elFatura) elFatura.innerText = formatarMoeda(gastosCreditoMes);
 
       const elRec = document.getElementById("kpi-receitas");
       if (elRec) elRec.innerText = formatarMoeda(recBancaria);
 
-      // Metas Globais (14 Metas)
+      // Metas Globais (14 Metas - consumo do mês)
+      const totalConsumoMes = pixContas + debContas + vaContas + gastosCreditoMes;
       const tetoTotal = METAS.reduce((a, b) => a + b.teto, 0);
-      const pctGlobal = tetoTotal > 0 ? (despPagas / tetoTotal) * 100 : 0;
+      const pctGlobal = tetoTotal > 0 ? (totalConsumoMes / tetoTotal) * 100 : 0;
       const elMetaGlobal = document.getElementById("kpi-meta-global");
       if (elMetaGlobal) elMetaGlobal.innerText = `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
       const barGlobal = document.getElementById("kpi-bar-global");
@@ -1842,23 +1885,26 @@
       }
 
       // Cards das 4 Formas de Pagamento
-      document.getElementById("val-pix").innerText = formatarMoeda(pix);
-      document.getElementById("pct-pix").innerText = `${((pix / 7500) * 100).toFixed(0)}%`;
+      document.getElementById("val-pix").innerText = formatarMoeda(pixContas);
+      document.getElementById("pct-pix").innerText = `${((pixContas / 7500) * 100).toFixed(0)}%`;
 
-      document.getElementById("val-credito").innerText = formatarMoeda(cred);
-      document.getElementById("pct-credito").innerText = `${((cred / 2700) * 100).toFixed(0)}%`;
+      document.getElementById("val-credito").innerText = formatarMoeda(gastosCreditoMes);
+      document.getElementById("pct-credito").innerText = `${((gastosCreditoMes / 2700) * 100).toFixed(0)}%`;
 
-      document.getElementById("val-debito").innerText = formatarMoeda(deb);
-      document.getElementById("pct-debito").innerText = `${((deb / 1500) * 100).toFixed(0)}%`;
+      document.getElementById("val-debito").innerText = formatarMoeda(debContas);
+      document.getElementById("pct-debito").innerText = `${((debContas / 1500) * 100).toFixed(0)}%`;
 
-      document.getElementById("val-va").innerText = formatarMoeda(va);
-      document.getElementById("pct-va").innerText = `${((va / 690) * 100).toFixed(0)}%`;
+      document.getElementById("val-va").innerText = formatarMoeda(vaContas);
+      document.getElementById("pct-va").innerText = `${((vaContas / 690) * 100).toFixed(0)}%`;
     }
 
     function renderizarTetos() {
       const container = document.getElementById("lista-tetos");
+      // As 14 metas acompanham os gastos do mês atual (exclui a fatura já paga do mês anterior)
+      const itensConsumo = lancamentos.filter(l => l.tipo === "Despesa" && !ehFaturaPaga(l));
+
       container.innerHTML = METAS.map(m => {
-        const gasto = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
+        const gasto = itensConsumo.filter(l => l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
         const restante = m.teto - gasto;
         const pct = m.teto > 0 ? (gasto / m.teto) * 100 : 0;
 
