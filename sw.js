@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v14-modo-privacidade-olho';
+const CACHE_NAME = 'vozfin-v15-menu-tres-pontos-instalar';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
