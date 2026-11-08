@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v13-novo-logo-azul-branco';
+const CACHE_NAME = 'vozfin-v14-modo-privacidade-olho';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
