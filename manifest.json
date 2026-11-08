@@ -1,8 +1,10 @@
 {
+  "id": "vozfin-app-oficial-v2",
   "name": "VozFin — Controle de Gastos por Voz",
   "short_name": "VozFin",
-  "description": "Controle financeiro por comando de voz integrado à planilha do Google Sheets",
-  "start_url": "./index.html",
+  "description": "Controle financeiro por comando de voz com inteligência em nuvem",
+  "start_url": "./index.html?app=v2",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#090d16",
   "theme_color": "#38bdf8",
