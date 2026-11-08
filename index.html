@@ -56,7 +56,7 @@
   <div class="max-w-md mx-auto p-2.5 sm:p-4 space-y-3">
 
     <!-- HEADER COMPACTO COM STATUS DE SINCRONIZAÇÃO EM TEMPO REAL -->
-    <header class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-md flex items-center justify-between">
+    <header class="hidden bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-md flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
           🎙️
@@ -83,7 +83,7 @@
     </header>
 
     <!-- BOTÃO DE CORTE DE MÊS (DESTAQUE MÁXIMO NO TOPO) -->
-    <section class="bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-slate-900 border-2 border-purple-500/60 rounded-2xl p-3 shadow-lg">
+    <section class="hidden bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-slate-900 border-2 border-purple-500/60 rounded-2xl p-3 shadow-lg">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2.5">
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center text-xl shadow-md shrink-0">
@@ -102,7 +102,7 @@
 
 
     <!-- BANNER DE RECUPERAÇÃO DE DADOS DO APARELHO -->
-    <div id="banner-recuperacao" class="bg-gradient-to-r from-indigo-950/90 via-slate-900 to-indigo-950/90 border border-indigo-500/40 rounded-2xl p-3 shadow-md space-y-2">
+    <div id="banner-recuperacao" class="hidden bg-gradient-to-r from-indigo-950/90 via-slate-900 to-indigo-950/90 border border-indigo-500/40 rounded-2xl p-3 shadow-md space-y-2">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center font-bold text-sm shrink-0 border border-indigo-500/30">
@@ -407,10 +407,24 @@
 
     <!-- ABA 4: MESES ANTERIORES -->
     <div id="aba-meses" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5 hidden">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+      <!-- BOTÃO DE CORTE INTEGRADO NA ABA DE HISTÓRICO -->
+      <div class="bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 border border-purple-500/50 p-3 rounded-xl flex items-center justify-between gap-2 shadow-sm">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">✂️</span>
+          <div>
+            <div class="text-xs font-bold text-purple-300">Fechamento do Mês</div>
+            <div class="text-[10px] text-slate-400">Arquivar gastos e zerar para novo mês</div>
+          </div>
+        </div>
+        <button onclick="abrirModalCorte()" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md active:scale-95 transition-all">
+          Fazer Corte
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2 pt-1">
         <div>
-          <h3 class="font-bold text-xs">📅 Meses Anteriores</h3>
-          <p class="text-[10px] text-[var(--muted-foreground)]">Histórico dos cortes mensais arquivados</p>
+          <h3 class="font-bold text-xs">Histórico de Fechamentos</h3>
+          <p class="text-[10px] text-[var(--muted-foreground)]">Meses arquivados anteriormente</p>
         </div>
         <select id="select-mes-historico" onchange="carregarMesHistorico(this.value)" class="bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-2 py-1 text-xs font-bold">
           <option value="">Nenhum mês arquivado ainda</option>
