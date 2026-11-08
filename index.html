@@ -529,7 +529,7 @@
     }
 
     function carregarLancamentosLocais() {
-      // Limpeza proativa de qualquer dado antigo que continha 'Roupas', 'Educação', etc.
+      // Limpeza proativa de caches de categorias antigas
       ['vozfin_lancamentos', 'vozfin_lancamentos_v1', 'vozfin_lancamentos_v2'].forEach(k => localStorage.removeItem(k));
       const dados = localStorage.getItem("vozfin_lancamentos_v3");
       if (dados) {
