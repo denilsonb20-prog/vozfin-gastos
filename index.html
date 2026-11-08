@@ -60,6 +60,67 @@
 <body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen pb-16 select-none font-sans">
 
   <div class="max-w-md mx-auto p-2.5 sm:p-4 space-y-3">
+    <!-- BARRA SUPERIOR ELEGANTE COM MENU DE 3 PONTINHOS À ESQUERDA -->
+    <div class="flex items-center justify-between px-1 pt-1 pb-0.5">
+      <div class="relative flex items-center gap-2">
+        <!-- BOTÃO 3 PONTINHOS À ESQUERDA -->
+        <button onclick="alternarMenuOpcoes(event)" id="btn-menu-tres-pontos" class="w-9 h-9 rounded-xl bg-[var(--card)] hover:bg-[var(--card-inner)] border border-[var(--border)] text-slate-200 flex items-center justify-center font-bold text-lg transition active:scale-95 shadow-sm" title="Menu de Opções">
+          ⋮
+        </button>
+
+        <div class="flex items-center gap-2">
+          <img src="./icon-192.png" alt="VozFin" class="w-7 h-7 rounded-lg shadow-sm border border-sky-400/40 object-cover" />
+          <span class="font-extrabold text-sm tracking-tight text-white">VozFin</span>
+        </div>
+
+        <!-- MENU SUSPENSO DROPDOWN DOS 3 PONTINHOS -->
+        <div id="dropdown-menu-opcoes" class="hidden absolute top-11 left-0 z-50 w-64 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-md">
+          <button onclick="dispararInstalacaoApp()" class="w-full text-left px-3 py-2.5 rounded-xl bg-gradient-to-r from-sky-500/20 to-teal-500/10 hover:from-sky-500/30 hover:to-teal-500/20 text-sky-300 font-bold text-xs flex items-center gap-2.5 transition border border-sky-500/30">
+            <span class="text-base">📲</span>
+            <div>
+              <div class="font-extrabold text-white">Adicionar ao Celular (App)</div>
+              <div class="text-[10px] text-sky-200/80 font-normal">Instalar na tela inicial como app nativo</div>
+            </div>
+          </button>
+          
+          <button onclick="baixarPlanilhaExcel(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base">📥</span>
+            <div>
+              <div class="font-bold">Baixar Planilha Excel</div>
+              <div class="text-[10px] text-slate-400">Exportar arquivo .xlsx</div>
+            </div>
+          </button>
+
+          <button onclick="abrirModalFirebase(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base">☁️</span>
+            <div>
+              <div class="font-bold">Banco Google Firestore</div>
+              <div class="text-[10px] text-slate-400">Status da nuvem 24h</div>
+            </div>
+          </button>
+
+          <button onclick="abrirModalQR(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base">📱</span>
+            <div>
+              <div class="font-bold">QR Code de Acesso</div>
+              <div class="text-[10px] text-slate-400">Abrir em outro aparelho</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <!-- LADO DIREITO: STATUS E PRIVACIDADE -->
+      <div class="flex items-center gap-2">
+        <span id="badge-sync-mini" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="sync-texto-mini">Online</span>
+        </span>
+        <button onclick="alternarOcultarValoresTopo()" class="w-8 h-8 rounded-xl bg-[var(--card)] hover:bg-[var(--card-inner)] border border-[var(--border)] text-slate-300 flex items-center justify-center text-xs transition active:scale-95 shadow-sm" title="Ocultar/Exibir valores do topo">
+          <span id="icone-olho-topbar">👁️</span>
+        </button>
+      </div>
+    </div>
+
 
     <!-- HEADER COMPACTO COM STATUS DE SINCRONIZAÇÃO EM TEMPO REAL -->
     <header class="hidden bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-md flex items-center justify-between">
@@ -790,6 +851,8 @@
       if (iconeCard) iconeCard.innerText = ocultarValoresTopo ? "🙈" : "👁️";
       if (textoCard) textoCard.innerText = ocultarValoresTopo ? "Mostrar" : "Ocultar";
       if (iconeHeader) iconeHeader.innerText = ocultarValoresTopo ? "🙈" : "👁️";
+      const iconeTopBar = document.getElementById("icone-olho-topbar");
+      if (iconeTopBar) iconeTopBar.innerText = ocultarValoresTopo ? "🙈" : "👁️";
 
       const btnCard = document.getElementById("btn-olho-saldo");
       if (btnCard) {
@@ -2671,6 +2734,73 @@
       exibirToast("📥 Planilha Excel gerada com sucesso!");
     }
 
+
+    // =========================================================================
+    // GERENCIAMENTO DO MENU DE 3 PONTINHOS E INSTALAÇÃO PWA
+    // =========================================================================
+    let deferredInstallPrompt = null;
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      console.log("Suporte nativo de instalacao PWA pronto!");
+      const box = document.getElementById("box-btn-instalar-nativo");
+      if (box) box.classList.remove("hidden");
+    });
+
+    function alternarMenuOpcoes(e) {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById("dropdown-menu-opcoes");
+      if (menu) menu.classList.toggle("hidden");
+    }
+
+    function fecharMenuOpcoes() {
+      const menu = document.getElementById("dropdown-menu-opcoes");
+      if (menu) menu.classList.add("hidden");
+    }
+
+    document.addEventListener("click", (e) => {
+      const menu = document.getElementById("dropdown-menu-opcoes");
+      const btn = document.getElementById("btn-menu-tres-pontos");
+      if (menu && !menu.contains(e.target) && btn && !btn.contains(e.target)) {
+        menu.classList.add("hidden");
+      }
+    });
+
+    async function dispararInstalacaoApp() {
+      fecharMenuOpcoes();
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        console.log("Resultado instalacao:", outcome);
+        deferredInstallPrompt = null;
+      } else {
+        abrirModalInstalarApp();
+      }
+    }
+
+    async function tentarInstalacaoNativa() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        console.log("Resultado instalacao:", outcome);
+        deferredInstallPrompt = null;
+        fecharModalInstalarApp();
+      } else {
+        alert("Siga o passo a passo abaixo conforme o modelo do seu celular (Android ou iPhone) para adicionar o ícone à tela inicial!");
+      }
+    }
+
+    function abrirModalInstalarApp() {
+      const modal = document.getElementById("modal-instalar-app");
+      if (modal) modal.classList.remove("hidden");
+    }
+
+    function fecharModalInstalarApp() {
+      const modal = document.getElementById("modal-instalar-app");
+      if (modal) modal.classList.add("hidden");
+    }
+
     // INICIALIZAÇÃO
     window.onload = () => {
       // Inicializa Google Firebase Oficial automaticamente (independente de PC)
@@ -2720,6 +2850,57 @@
           Fechar
         </button>
       </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL DE INSTRUÇÕES DE INSTALAÇÃO DO PWA -->
+  <div id="modal-instalar-app" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-3xl w-full max-w-sm p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div class="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+        <div class="flex items-center gap-2.5">
+          <img src="./icon-192.png" alt="VozFin" class="w-8 h-8 rounded-xl object-cover border border-sky-400/40" />
+          <div>
+            <h3 class="font-extrabold text-sm text-slate-100">Instalar VozFin no Celular</h3>
+            <p class="text-[10px] text-slate-400">Usar como aplicativo na tela inicial</p>
+          </div>
+        </div>
+        <button onclick="fecharModalInstalarApp()" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+
+      <div id="box-btn-instalar-nativo">
+        <button onclick="tentarInstalacaoNativa()" class="w-full py-3 bg-gradient-to-r from-sky-500 to-teal-500 hover:from-sky-600 hover:to-teal-600 text-slate-950 font-extrabold rounded-xl text-xs transition shadow-lg flex items-center justify-center gap-2">
+          <span>📲</span> <span>Instalar Aplicativo Agora</span>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300">
+        <div class="p-3 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] space-y-1.5">
+          <div class="font-bold text-sky-400 flex items-center gap-1.5">
+            <span>🤖</span> <span>No Android (Google Chrome):</span>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            1. Toque nos <strong>3 pontinhos</strong> do navegador (no canto superior direito do Chrome).<br>
+            2. Selecione <strong>"Instalar aplicativo"</strong> ou <strong>"Adicionar à tela inicial"</strong>.<br>
+            3. Confirme em <strong>"Instalar"</strong>.
+          </p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] space-y-1.5">
+          <div class="font-bold text-sky-400 flex items-center gap-1.5">
+            <span>🍎</span> <span>No iPhone (Safari):</span>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            1. Toque no botão <strong>Compartilhar</strong> (ícone do quadrado com a seta para cima na barra inferior).<br>
+            2. Role a lista para baixo e toque em <strong>"Adicionar à Tela de Início"</strong>.<br>
+            3. Toque em <strong>"Adicionar"</strong> no canto superior direito.
+          </p>
+        </div>
+      </div>
+
+      <button onclick="fecharModalInstalarApp()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition">
+        Entendido
+      </button>
     </div>
   </div>
 
