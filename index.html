@@ -431,6 +431,82 @@
       </div>
     </div>
 
+    <!-- MODAL DE EDIÇÃO DE LANÇAMENTO (VALOR E TIPO DE GASTO) -->
+    <div id="modal-editar-lancamento" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
+      <div class="bg-[var(--card)] border-2 border-blue-500/50 rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-base">✏️</span>
+            <div>
+              <h3 class="font-extrabold text-xs text-[var(--foreground)]">Editar Lançamento</h3>
+              <p class="text-[10px] text-[var(--muted-foreground)]">Altere o valor ou a categoria do gasto</p>
+            </div>
+          </div>
+          <button onclick="fecharModalEditarLancamento()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
+        </div>
+
+        <input type="hidden" id="edit-lanc-id" />
+
+        <div class="space-y-2 text-xs">
+          <div>
+            <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5 font-bold">Valor (R$)</label>
+            <input id="edit-lanc-valor" type="number" step="0.01" class="w-full bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm font-bold font-mono text-emerald-400 focus:outline-none focus:border-blue-500" />
+          </div>
+
+          <div>
+            <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5 font-bold">Categoria (Tipo de Gasto)</label>
+            <select id="edit-lanc-categoria" class="w-full bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-blue-500">
+              <option value="ALUGUEL">🏠 ALUGUEL</option>
+              <option value="PARCELA CARRO">🚗 PARCELA CARRO</option>
+              <option value="CARTÃO">💳 CARTÃO</option>
+              <option value="POUPANÇA">🏦 POUPANÇA</option>
+              <option value="COMBUSTIVEL">⛽ COMBUSTIVEL</option>
+              <option value="PLANO DE SAUDE">🩺 PLANO DE SAUDE</option>
+              <option value="CONTA DE LUZ">💡 CONTA DE LUZ</option>
+              <option value="CONTA DE AGUA">🚰 CONTA DE AGUA</option>
+              <option value="CONTA DE INTERNET">🌐 CONTA DE INTERNET</option>
+              <option value="SEGURO MOTO/CARRO">🛡️ SEGURO MOTO/CARRO</option>
+              <option value="CONTA TELEFONE">📱 CONTA TELEFONE</option>
+              <option value="OUTROS GASTOS">📦 OUTROS GASTOS</option>
+              <option value="Salário">💵 Salário (Receita)</option>
+              <option value="Vale Alimentação">🍽️ Vale Alimentação (Receita)</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5 font-bold">Tipo</label>
+              <select id="edit-lanc-tipo" class="w-full bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-2 py-1.5 text-xs font-semibold">
+                <option value="Despesa">📉 Despesa</option>
+                <option value="Receita">📈 Receita</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5 font-bold">Forma Pgto</label>
+              <select id="edit-lanc-forma" class="w-full bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-2 py-1.5 text-xs font-semibold">
+                <option value="PIX">💠 PIX</option>
+                <option value="Cartão de Crédito">💳 Crédito</option>
+                <option value="Cartão de Débito">🏧 Débito</option>
+                <option value="Vale Alimentação">🍽️ Vale</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5 font-bold">Descrição</label>
+            <input id="edit-lanc-desc" type="text" class="w-full bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-2.5 py-1.5 text-xs" />
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
+          <button onclick="fecharModalEditarLancamento()" class="px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs">Cancelar</button>
+          <button onclick="salvarEdicaoLancamento()" class="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md active:scale-95">
+            Salvar Alterações
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL QR CODE -->
     <div id="modal-qr" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
       <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 max-w-xs w-full space-y-3 shadow-2xl text-center">
@@ -1196,11 +1272,79 @@
               <span class="font-mono font-bold text-xs ${isRec ? 'text-emerald-400' : 'text-rose-400'}">
                 ${isRec ? '+' : '-'}${formatarMoeda(l.valor)}
               </span>
-              <button onclick="excluirLancamento(${l.id})" class="text-xs px-1.5 py-0.5 rounded text-rose-400 hover:bg-rose-500/10">🗑️</button>
+              <button onclick="abrirModalEditarLancamento(${l.id})" class="text-xs px-2 py-1 rounded-lg bg-slate-800 text-blue-400 border border-[var(--border)] hover:bg-slate-700 active:scale-95" title="Editar valor e categoria">✏️</button>
+              <button onclick="excluirLancamento(${l.id})" class="text-xs px-1.5 py-1 rounded-lg text-rose-400 hover:bg-rose-500/10 active:scale-95" title="Excluir">🗑️</button>
             </div>
           </div>
         `;
       }).join("");
+    }
+
+    // =========================================================================
+    // EDIÇÃO DE LANÇAMENTO (VALOR E TIPO DE GASTO / CATEGORIA)
+    // =========================================================================
+    function abrirModalEditarLancamento(id) {
+      const item = lancamentos.find(l => l.id == id);
+      if (!item) return;
+
+      document.getElementById("edit-lanc-id").value = item.id;
+      document.getElementById("edit-lanc-valor").value = item.valor;
+      document.getElementById("edit-lanc-categoria").value = item.categoria;
+      document.getElementById("edit-lanc-tipo").value = item.tipo || "Despesa";
+      document.getElementById("edit-lanc-forma").value = item.formaPagamento || "PIX";
+      document.getElementById("edit-lanc-desc").value = item.descricao || "";
+
+      document.getElementById("modal-editar-lancamento").classList.remove("hidden");
+    }
+
+    function fecharModalEditarLancamento() {
+      document.getElementById("modal-editar-lancamento").classList.add("hidden");
+    }
+
+    function salvarEdicaoLancamento() {
+      const id = document.getElementById("edit-lanc-id").value;
+      const valor = parseFloat(document.getElementById("edit-lanc-valor").value);
+      const categoria = document.getElementById("edit-lanc-categoria").value;
+      const tipo = document.getElementById("edit-lanc-tipo").value;
+      const forma = document.getElementById("edit-lanc-forma").value;
+      const desc = document.getElementById("edit-lanc-desc").value.trim() || categoria;
+
+      if (isNaN(valor) || valor <= 0) {
+        alert("Por favor informe um valor maior que zero.");
+        return;
+      }
+
+      const idx = lancamentos.findIndex(l => l.id == id);
+      if (idx !== -1) {
+        lancamentos[idx].valor = valor;
+        lancamentos[idx].categoria = categoria;
+        lancamentos[idx].tipo = tipo;
+        lancamentos[idx].formaPagamento = forma;
+        lancamentos[idx].descricao = desc;
+
+        localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+
+        atualizarKPIs();
+        renderizarTetos();
+        renderizarExtrato();
+        renderizarGraficoPizza();
+
+        // Sincroniza com backend local e planilha do Google Drive
+        fetch("http://127.0.0.1:8090/api/lancamentos/editar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: id,
+            valor: valor,
+            categoria: categoria,
+            tipo: tipo,
+            formaPagamento: forma,
+            descricao: desc
+          })
+        }).catch(() => {});
+      }
+
+      fecharModalEditarLancamento();
     }
 
     function abrirModalQR() {
