@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v12-firebase-online-24-7';
+const CACHE_NAME = 'vozfin-v13-novo-logo-azul-branco';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
