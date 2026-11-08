@@ -201,8 +201,8 @@
         <button onclick="simularFala('Parcela carro 1413 no debito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
           🚗 "Parcela carro 1413"
         </button>
-        <button onclick="simularFala('Cartão 350 reais')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          💳 "Cartão 350"
+        <button onclick="simularFala('50 no cartão de crédito')" class="text-xs px-2 py-1 rounded-lg bg-purple-950/40 text-purple-300 border border-purple-500/30 hover:border-purple-500 transition-all font-bold">
+          💳 "50 no cartão de crédito"
         </button>
         <button onclick="simularFala('Poupança 500 no pix')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
           🏦 "Poupança 500"
@@ -230,7 +230,7 @@
           </div>
 
           <div class="col-span-2">
-            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Categoria (12 Metas)</label>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Categoria (Somente as 12 Metas)</label>
             <select id="campo-categoria" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-semibold">
               <option value="ALUGUEL">🏠 ALUGUEL</option>
               <option value="PARCELA CARRO">🚗 PARCELA CARRO</option>
@@ -246,7 +246,6 @@
               <option value="OUTROS GASTOS">📦 OUTROS GASTOS</option>
               <option value="Salário">💵 Salário (Receita)</option>
               <option value="Vale Alimentação">🍽️ Vale Alimentação (Receita)</option>
-              <option value="Outras Receitas">📈 Outras Receitas</option>
             </select>
           </div>
         </div>
@@ -514,7 +513,9 @@
     }
 
     function carregarMetasLocais() {
-      const salvas = localStorage.getItem("vozfin_metas_12");
+      // Limpeza proativa de caches legados
+      ['vozfin_metas', 'vozfin_metas_12'].forEach(k => localStorage.removeItem(k));
+      const salvas = localStorage.getItem("vozfin_metas_v3");
       if (salvas) {
         try {
           const dict = JSON.parse(salvas);
@@ -528,9 +529,20 @@
     }
 
     function carregarLancamentosLocais() {
-      const dados = localStorage.getItem("vozfin_lancamentos_v2");
+      // Limpeza proativa de qualquer dado antigo que continha 'Roupas', 'Educação', etc.
+      ['vozfin_lancamentos', 'vozfin_lancamentos_v1', 'vozfin_lancamentos_v2'].forEach(k => localStorage.removeItem(k));
+      const dados = localStorage.getItem("vozfin_lancamentos_v3");
       if (dados) {
-        try { return JSON.parse(dados); } catch(e) {}
+        try {
+          const arr = JSON.parse(dados);
+          const nomesValidos = CATEGORIAS_PADRAO.map(c => c.nome);
+          return arr.map(item => {
+            if (item.tipo === "Despesa" && !nomesValidos.includes(item.categoria)) {
+              item.categoria = "OUTROS GASTOS";
+            }
+            return item;
+          });
+        } catch(e) {}
       }
       return []; // Totalmente zerado
     }
@@ -608,54 +620,67 @@
       // 3. Caso contrário, é Despesa
       document.getElementById("campo-tipo").value = "Despesa";
 
-      // 4. Mapear Formas de Pagamento
-      if (t.includes("crédito") || t.includes("credito") || t.includes("cartão de crédito") || t.includes("cartao de credito")) {
-        selecionarForma("Cartão de Crédito");
-      } else if (t.includes("débito") || t.includes("debito") || t.includes("cartão de débito") || t.includes("cartao de debito")) {
-        selecionarForma("Cartão de Débito");
-      } else if (t.includes("vale") || t.includes("alimentação") || t.includes("refeição")) {
-        selecionarForma("Vale Alimentação");
-      } else if (t.includes("pix") || t.includes("transferência")) {
-        selecionarForma("PIX");
-      }
+      // 4. REGRA DE PRIORIDADE MÁXIMA: Falou 'cartão de crédito' ou 'crédito' -> vai DIRETO para a categoria 'CARTÃO' e forma 'Cartão de Crédito'
+      const eCartaoCredito = (
+        t.includes("cartão de crédito") || t.includes("cartao de credito") ||
+        t.includes("no crédito") || t.includes("no credito") ||
+        t.includes("crédito") || t.includes("credito") ||
+        t.includes("cartão") || t.includes("cartao") ||
+        t.includes("fatura")
+      );
 
-      // 5. Mapear as 12 Categorias Exatas
       let catDetectada = "OUTROS GASTOS";
       let descSugerida = texto;
 
-      if (t.includes("aluguel") || t.includes("imobiliaria") || t.includes("condomínio") || t.includes("condominio")) {
-        catDetectada = "ALUGUEL";
-        descSugerida = "Aluguel Mensal";
-      } else if (t.includes("parcela carro") || t.includes("parcela do carro") || t.includes("prestação do carro") || t.includes("prestacao carro") || t.includes("financiamento")) {
-        catDetectada = "PARCELA CARRO";
-        descSugerida = "Parcela do Carro";
-      } else if (t.includes("cartão") || t.includes("cartao") || t.includes("fatura") || t.includes("nubank") || t.includes("itau")) {
+      if (eCartaoCredito) {
         catDetectada = "CARTÃO";
-        descSugerida = "Gastos / Fatura no Cartão";
-      } else if (t.includes("poupança") || t.includes("poupanca") || t.includes("guardar") || t.includes("reserva") || t.includes("investir")) {
-        catDetectada = "POUPANÇA";
-        descSugerida = "Aplicação em Poupança / Reserva";
-      } else if (t.includes("combustível") || t.includes("combustivel") || t.includes("gasolina") || t.includes("etanol") || t.includes("diesel") || t.includes("posto") || t.includes("abastecer")) {
-        catDetectada = "COMBUSTIVEL";
-        descSugerida = "Combustível";
-      } else if (t.includes("plano de saúde") || t.includes("plano de saude") || t.includes("unimed") || t.includes("hapvida") || t.includes("médico") || t.includes("saúde")) {
-        catDetectada = "PLANO DE SAUDE";
-        descSugerida = "Plano de Saúde";
-      } else if (t.includes("luz") || t.includes("energia") || t.includes("enel") || t.includes("celpe") || t.includes("neoenergia")) {
-        catDetectada = "CONTA DE LUZ";
-        descSugerida = "Conta de Luz";
-      } else if (t.includes("água") || t.includes("agua") || t.includes("compesa") || t.includes("cagece") || t.includes("sabesp") || t.includes("saneamento")) {
-        catDetectada = "CONTA DE AGUA";
-        descSugerida = "Conta de Água";
-      } else if (t.includes("internet") || t.includes("wifi") || t.includes("banda larga") || t.includes("fibra")) {
-        catDetectada = "CONTA DE INTERNET";
-        descSugerida = "Conta de Internet";
-      } else if (t.includes("seguro") || t.includes("seguro moto") || t.includes("seguro carro") || t.includes("porto seguro")) {
-        catDetectada = "SEGURO MOTO/CARRO";
-        descSugerida = "Seguro Moto / Carro";
-      } else if (t.includes("telefone") || t.includes("celular") || t.includes("vivo") || t.includes("claro") || t.includes("tim")) {
-        catDetectada = "CONTA TELEFONE";
-        descSugerida = "Conta de Telefone / Celular";
+        descSugerida = "Gasto no Cartão de Crédito";
+        selecionarForma("Cartão de Crédito");
+      } else {
+        // Mapear Formas de Pagamento para os demais casos
+        if (t.includes("débito") || t.includes("debito") || t.includes("no débito") || t.includes("no debito")) {
+          selecionarForma("Cartão de Débito");
+        } else if (t.includes("vale") || t.includes("alimentação") || t.includes("refeição")) {
+          selecionarForma("Vale Alimentação");
+        } else if (t.includes("pix") || t.includes("transferência")) {
+          selecionarForma("PIX");
+        }
+
+        // Mapear estritamente as outras 11 Categorias Oficiais
+        if (t.includes("aluguel") || t.includes("imobiliaria") || t.includes("condomínio") || t.includes("condominio")) {
+          catDetectada = "ALUGUEL";
+          descSugerida = "Aluguel Mensal";
+        } else if (t.includes("parcela carro") || t.includes("parcela do carro") || t.includes("prestação do carro") || t.includes("prestacao carro") || t.includes("financiamento")) {
+          catDetectada = "PARCELA CARRO";
+          descSugerida = "Parcela do Carro";
+        } else if (t.includes("poupança") || t.includes("poupanca") || t.includes("guardar") || t.includes("reserva") || t.includes("investir")) {
+          catDetectada = "POUPANÇA";
+          descSugerida = "Poupança / Reserva";
+        } else if (t.includes("combustível") || t.includes("combustivel") || t.includes("gasolina") || t.includes("etanol") || t.includes("diesel") || t.includes("posto") || t.includes("abastecer")) {
+          catDetectada = "COMBUSTIVEL";
+          descSugerida = "Combustível";
+        } else if (t.includes("plano de saúde") || t.includes("plano de saude") || t.includes("unimed") || t.includes("hapvida") || t.includes("médico") || t.includes("saúde")) {
+          catDetectada = "PLANO DE SAUDE";
+          descSugerida = "Plano de Saúde";
+        } else if (t.includes("luz") || t.includes("energia") || t.includes("enel") || t.includes("celpe") || t.includes("neoenergia")) {
+          catDetectada = "CONTA DE LUZ";
+          descSugerida = "Conta de Luz";
+        } else if (t.includes("água") || t.includes("agua") || t.includes("compesa") || t.includes("cagece") || t.includes("sabesp") || t.includes("saneamento")) {
+          catDetectada = "CONTA DE AGUA";
+          descSugerida = "Conta de Água";
+        } else if (t.includes("internet") || t.includes("wifi") || t.includes("banda larga") || t.includes("fibra")) {
+          catDetectada = "CONTA DE INTERNET";
+          descSugerida = "Conta de Internet";
+        } else if (t.includes("seguro") || t.includes("seguro moto") || t.includes("seguro carro") || t.includes("porto seguro")) {
+          catDetectada = "SEGURO MOTO/CARRO";
+          descSugerida = "Seguro Moto / Carro";
+        } else if (t.includes("telefone") || t.includes("celular") || t.includes("vivo") || t.includes("claro") || t.includes("tim")) {
+          catDetectada = "CONTA TELEFONE";
+          descSugerida = "Conta de Telefone / Celular";
+        } else {
+          // Qualquer outro gasto não previsto nas 11 vai estritamente para OUTROS GASTOS
+          catDetectada = "OUTROS GASTOS";
+        }
       }
 
       document.getElementById("campo-categoria").value = catDetectada;
@@ -790,7 +815,7 @@
       };
 
       lancamentos.unshift(novo);
-      localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify(lancamentos));
 
       // Limpa inputs
       document.getElementById("campo-valor").value = "";
@@ -825,7 +850,7 @@
     function excluirLancamento(id) {
       if (!confirm("Deseja realmente remover este lançamento?")) return;
       lancamentos = lancamentos.filter(l => l.id !== id);
-      localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify(lancamentos));
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
@@ -896,7 +921,7 @@
 
       // ZERA TUDO PARA O NOVO MÊS
       lancamentos = [];
-      localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify([]));
+      localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify([]));
 
       // Envia corte para a planilha via backend
       fetch("http://127.0.0.1:8090/api/corte", {
@@ -959,7 +984,7 @@
           dict[m.nome] = val;
         }
       });
-      localStorage.setItem("vozfin_metas_12", JSON.stringify(dict));
+      localStorage.setItem("vozfin_metas_v3", JSON.stringify(dict));
 
       // Envia ao backend para atualizar o Excel
       fetch("http://127.0.0.1:8090/api/metas", {
@@ -1293,8 +1318,14 @@
         .then(r => r.json())
         .then(data => {
           if (data.status === "ok" && Array.isArray(data.lancamentos)) {
-            lancamentos = data.lancamentos;
-            localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
+            const nomesValidos = CATEGORIAS_PADRAO.map(c => c.nome);
+            lancamentos = data.lancamentos.map(item => {
+              if (item.tipo === "Despesa" && !nomesValidos.includes(item.categoria)) {
+                item.categoria = "OUTROS GASTOS";
+              }
+              return item;
+            });
+            localStorage.setItem("vozfin_lancamentos_v3", JSON.stringify(lancamentos));
             atualizarKPIs();
             renderizarTetos();
             renderizarExtrato();
