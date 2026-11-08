@@ -71,6 +71,9 @@
             <span id="badge-sync" class="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> <span id="sync-texto">Sincronizado</span>
             </span>
+            <button onclick="alternarOcultarValoresTopo()" class="p-1 px-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition text-xs flex items-center gap-1 border border-transparent hover:border-slate-700" title="Ocultar/Exibir valores do topo (Modo Privacidade)">
+              <span id="icone-olho-header">👁️</span>
+            </button>
           </div>
           <p class="text-[11px] text-[var(--muted-foreground)]">14 Metas • Celular & PC em Tempo Real</p>
         </div>
@@ -137,9 +140,15 @@
     <section class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 space-y-2.5 shadow-sm">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm">🏦</span>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-teal-400">Saldo Sobrando na Conta (Hoje)</span>
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm">🏦</span>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-teal-400">Saldo Sobrando na Conta (Hoje)</span>
+            </div>
+            <button onclick="alternarOcultarValoresTopo()" id="btn-olho-saldo" class="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition text-[11px] font-semibold flex items-center gap-1.5 border border-slate-700/60 shadow-sm" title="Ocultar ou mostrar valores (estilo app de banco)">
+              <span id="icone-olho-card">👁️</span>
+              <span class="text-[10px]" id="texto-olho-card">Ocultar</span>
+            </button>
           </div>
           <div class="text-2xl font-black font-mono tracking-tight text-teal-300 mt-0.5" id="kpi-saldo-bancario">R$ 0,00</div>
           <div class="text-[11px] text-[var(--muted-foreground)]">
@@ -753,9 +762,47 @@
     let gravando = false;
     let recognition = null;
 
+    let ocultarValoresTopo = localStorage.getItem("vozfin_ocultar_valores_topo") === "true";
+
     function formatarMoeda(val) {
       return (Number(val) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
+
+    function formatarMoedaTopo(val) {
+      if (ocultarValoresTopo) {
+        return "••••••";
+      }
+      return formatarMoeda(val);
+    }
+
+    function alternarOcultarValoresTopo() {
+      ocultarValoresTopo = !ocultarValoresTopo;
+      localStorage.setItem("vozfin_ocultar_valores_topo", ocultarValoresTopo ? "true" : "false");
+      atualizarIconesOlho();
+      atualizarKPIs();
+    }
+
+    function atualizarIconesOlho() {
+      const iconeCard = document.getElementById("icone-olho-card");
+      const textoCard = document.getElementById("texto-olho-card");
+      const iconeHeader = document.getElementById("icone-olho-header");
+
+      if (iconeCard) iconeCard.innerText = ocultarValoresTopo ? "🙈" : "👁️";
+      if (textoCard) textoCard.innerText = ocultarValoresTopo ? "Mostrar" : "Ocultar";
+      if (iconeHeader) iconeHeader.innerText = ocultarValoresTopo ? "🙈" : "👁️";
+
+      const btnCard = document.getElementById("btn-olho-saldo");
+      if (btnCard) {
+        if (ocultarValoresTopo) {
+          btnCard.classList.add("bg-teal-500/20", "text-teal-300", "border-teal-500/40");
+          btnCard.classList.remove("bg-slate-800/80", "text-slate-300", "border-slate-700/60");
+        } else {
+          btnCard.classList.remove("bg-teal-500/20", "text-teal-300", "border-teal-500/40");
+          btnCard.classList.add("bg-slate-800/80", "text-slate-300", "border-slate-700/60");
+        }
+      }
+    }
+
 
     function ehFaturaPaga(l) {
       if (!l || l.tipo !== "Despesa") return false;
@@ -1919,21 +1966,21 @@
       // Atualiza valores nos cartões
       const elBancario = document.getElementById("kpi-saldo-bancario");
       if (elBancario) {
-        elBancario.innerText = formatarMoeda(saldoBancario);
+        elBancario.innerText = formatarMoedaTopo(saldoBancario);
         elBancario.className = saldoBancario >= 0 
           ? "text-2xl font-black font-mono tracking-tight text-teal-300 mt-0.5"
           : "text-2xl font-black font-mono tracking-tight text-rose-400 mt-0.5";
       }
 
       const elDesp = document.getElementById("kpi-despesas");
-      if (elDesp) elDesp.innerText = formatarMoeda(despPagas);
+      if (elDesp) elDesp.innerText = formatarMoedaTopo(despPagas);
 
       const elSaidasCaixa = document.getElementById("kpi-saidas-caixa");
-      if (elSaidasCaixa) elSaidasCaixa.innerText = formatarMoeda(despPagas);
+      if (elSaidasCaixa) elSaidasCaixa.innerText = formatarMoedaTopo(despPagas);
 
       const elSaldoLivre = document.getElementById("kpi-saldo-livre");
       if (elSaldoLivre) {
-        elSaldoLivre.innerText = formatarMoeda(sobraProjetada);
+        elSaldoLivre.innerText = formatarMoedaTopo(sobraProjetada);
         elSaldoLivre.className = sobraProjetada >= 0 
           ? "font-mono font-bold text-emerald-400"
           : "font-mono font-bold text-rose-400";
@@ -1941,17 +1988,17 @@
 
       // Card Fatura Cartão (A Vencer): mostra exatamente os gastos do cartão deste mês (R$ 2.100,00)!
       const elFatura = document.getElementById("kpi-fatura-cartao");
-      if (elFatura) elFatura.innerText = formatarMoeda(gastosCreditoMes);
+      if (elFatura) elFatura.innerText = formatarMoedaTopo(gastosCreditoMes);
 
       const elRec = document.getElementById("kpi-receitas");
-      if (elRec) elRec.innerText = formatarMoeda(recBancaria);
+      if (elRec) elRec.innerText = formatarMoedaTopo(recBancaria);
 
       // Metas Globais (14 Metas - consumo do mês)
       const totalConsumoMes = pixContas + debContas + vaContas + gastosCreditoMes;
       const tetoTotal = METAS.reduce((a, b) => a + b.teto, 0);
       const pctGlobal = tetoTotal > 0 ? (totalConsumoMes / tetoTotal) * 100 : 0;
       const elMetaGlobal = document.getElementById("kpi-meta-global");
-      if (elMetaGlobal) elMetaGlobal.innerText = `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
+      if (elMetaGlobal) elMetaGlobal.innerText = ocultarValoresTopo ? `${pctGlobal.toFixed(0)}% de ••••••` : `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
       const barGlobal = document.getElementById("kpi-bar-global");
       if (barGlobal) {
         barGlobal.style.width = `${Math.min(pctGlobal, 100)}%`;
@@ -1959,16 +2006,16 @@
       }
 
       // Cards das 4 Formas de Pagamento
-      document.getElementById("val-pix").innerText = formatarMoeda(pixContas);
+      document.getElementById("val-pix").innerText = formatarMoedaTopo(pixContas);
       document.getElementById("pct-pix").innerText = `${((pixContas / 7500) * 100).toFixed(0)}%`;
 
-      document.getElementById("val-credito").innerText = formatarMoeda(gastosCreditoMes);
+      document.getElementById("val-credito").innerText = formatarMoedaTopo(gastosCreditoMes);
       document.getElementById("pct-credito").innerText = `${((gastosCreditoMes / 2700) * 100).toFixed(0)}%`;
 
-      document.getElementById("val-debito").innerText = formatarMoeda(debContas);
+      document.getElementById("val-debito").innerText = formatarMoedaTopo(debContas);
       document.getElementById("pct-debito").innerText = `${((debContas / 1500) * 100).toFixed(0)}%`;
 
-      document.getElementById("val-va").innerText = formatarMoeda(vaContas);
+      document.getElementById("val-va").innerText = formatarMoedaTopo(vaContas);
       document.getElementById("pct-va").innerText = `${((vaContas / 690) * 100).toFixed(0)}%`;
     }
 
