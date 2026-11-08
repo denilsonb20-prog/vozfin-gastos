@@ -127,19 +127,25 @@
     <section class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 space-y-2.5 shadow-sm">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Saldo Livre em Conta (PIX/Débito)</span>
-          <div class="text-2xl font-black font-mono tracking-tight text-[var(--foreground)] mt-0.5" id="kpi-saldo-livre">R$ 0,00</div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Saldo Real Restante no Mês (Sobra Líquida)</span>
+          <div class="text-2xl font-black font-mono tracking-tight text-emerald-400 mt-0.5" id="kpi-saldo-livre">R$ 1.526,80</div>
           <div class="text-[11px] text-[var(--muted-foreground)]">
             Entradas: <strong class="text-emerald-400 font-mono" id="kpi-receitas">R$ 0,00</strong> • Gastos: <strong class="text-rose-400 font-mono" id="kpi-despesas">R$ 0,00</strong>
+          </div>
+          <div class="text-[10px] text-slate-400 mt-1 flex flex-wrap items-center gap-1.5">
+            <span>🏦 Em Conta (PIX/Déb.): <strong class="text-teal-300 font-mono" id="kpi-saldo-bancario">R$ 0,00</strong></span>
+            <span>•</span>
+            <span>💳 Fatura Cartão: <strong class="text-purple-300 font-mono" id="kpi-fatura-cartao">R$ 0,00</strong></span>
           </div>
         </div>
         <div class="text-right">
           <span class="text-[10px] text-[var(--muted-foreground)] uppercase font-semibold">Teto Total (14 Metas)</span>
-          <div class="text-xs font-bold font-mono text-[var(--foreground)]" id="kpi-meta-global">0% de R$ 10.278,00</div>
+          <div class="text-xs font-bold font-mono text-[var(--foreground)]" id="kpi-meta-global">0% de R$ 10.108,00</div>
           <div class="w-24 bg-[var(--background)] h-1.5 rounded-full overflow-hidden mt-1 ml-auto border border-[var(--border)]">
             <div id="kpi-bar-global" class="bg-emerald-500 h-full rounded-full transition-all" style="width: 0%"></div>
           </div>
         </div>
+      </div>
       </div>
 
       <!-- 4 Cards de Formas de Pagamento -->
@@ -1423,13 +1429,27 @@
       const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
 
       const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
-      const cred = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Crédito").reduce((a, b) => a + b.valor, 0);
-      const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
-      const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
+      const cred = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Crédito" || l.formaPagamento === "Cartão de Credito" || l.formaPagamento.toLowerCase().includes("crédito") || l.formaPagamento.toLowerCase().includes("credito"))).reduce((a, b) => a + b.valor, 0);
+      const deb = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Cartão de Débito" || l.formaPagamento === "Cartão de Debito" || l.formaPagamento.toLowerCase().includes("débito") || l.formaPagamento.toLowerCase().includes("debito"))).reduce((a, b) => a + b.valor, 0);
+      const va = lancamentos.filter(l => l.tipo === "Despesa" && (l.formaPagamento === "Vale Alimentação" || l.formaPagamento === "Vale Alimentacao" || l.formaPagamento.toLowerCase().includes("vale"))).reduce((a, b) => a + b.valor, 0);
 
-      const saldoLivre = rec - (pix + deb);
+      // Saldo Real Restante no Mês (Entradas Totais menos Gastos Totais)
+      const saldoReal = rec - desp;
+      // Saldo ainda presente na conta bancária física (sem descontar a fatura futura do cartão de crédito)
+      const saldoBancario = rec - (pix + deb);
 
-      document.getElementById("kpi-saldo-livre").innerText = formatarMoeda(saldoLivre);
+      const elSaldo = document.getElementById("kpi-saldo-livre");
+      if (elSaldo) {
+        elSaldo.innerText = formatarMoeda(saldoReal);
+        elSaldo.className = saldoReal >= 0 
+          ? "text-2xl font-black font-mono tracking-tight text-emerald-400 mt-0.5"
+          : "text-2xl font-black font-mono tracking-tight text-rose-400 mt-0.5";
+      }
+
+      const elBancario = document.getElementById("kpi-saldo-bancario");
+      if (elBancario) elBancario.innerText = formatarMoeda(saldoBancario);
+      const elFatura = document.getElementById("kpi-fatura-cartao");
+      if (elFatura) elFatura.innerText = formatarMoeda(cred);
       document.getElementById("kpi-receitas").innerText = formatarMoeda(rec);
       document.getElementById("kpi-despesas").innerText = formatarMoeda(desp);
 
