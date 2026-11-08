@@ -15,26 +15,6 @@
   <title>VozFin — Controle Financeiro por Voz</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
-  <script>
-    // LIMPEZA DE CACHE ANTIGO PARA GARANTIR VERSAO ATUALIZADA
-    (function() {
-      const versaoAtual = 'v4_clean_strict12';
-      const salva = localStorage.getItem('vozfin_app_build');
-      if (salva !== versaoAtual) {
-        localStorage.clear();
-        sessionStorage.clear();
-        localStorage.setItem('vozfin_app_build', versaoAtual);
-        if ('caches' in window) {
-          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
-        }
-      }
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(regs => {
-          for (let reg of regs) reg.update();
-        });
-      }
-    })();
-  </script>
   <style>
     :root {
       --background: #090d16;
@@ -66,7 +46,6 @@
       color: #34d399;
       font-weight: 700;
     }
-    /* Otimização mobile extrema */
     button, input, select {
       touch-action: manipulation;
     }
@@ -76,7 +55,7 @@
 
   <div class="max-w-md mx-auto p-2.5 sm:p-4 space-y-3">
 
-    <!-- HEADER ULTRA COMPACTO PARA CELULAR -->
+    <!-- HEADER COMPACTO COM STATUS DE SINCRONIZAÇÃO EM TEMPO REAL -->
     <header class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-md flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
@@ -85,27 +64,25 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="font-extrabold text-sm tracking-tight">VozFin</h1>
-            <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider">
-              12 Metas
+            <span id="badge-sync" class="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> <span id="sync-texto">Sincronizado</span>
             </span>
           </div>
-          <p class="text-[11px] text-[var(--muted-foreground)]">Salário e Gastos Zerados</p>
+          <p class="text-[11px] text-[var(--muted-foreground)]">14 Metas • Celular & PC em Tempo Real</p>
         </div>
       </div>
 
       <div class="flex items-center gap-1">
-        <button onclick="forcarAtualizacaoTotal()" class="text-[11px] px-2 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-inner)] hover:opacity-80 flex items-center gap-1 text-[var(--muted-foreground)]" title="Recarregar limpo">
-          <span>🔄</span>
+        <button onclick="sincronizarTotalComServidor()" class="text-[11px] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card-inner)] hover:opacity-80 flex items-center gap-1 text-emerald-400 font-bold" title="Sincronizar agora">
+          <span>🔄</span> <span>Sync</span>
         </button>
         <button onclick="abrirModalQR()" class="text-[11px] px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white font-bold flex items-center gap-1 shadow-sm">
-          <span>📱</span> <span>Celular</span>
+          <span>📱</span>
         </button>
       </div>
     </header>
 
-    <!-- ========================================================================= -->
     <!-- BOTÃO DE CORTE DE MÊS (DESTAQUE MÁXIMO NO TOPO) -->
-    <!-- ========================================================================= -->
     <section class="bg-gradient-to-r from-purple-900/80 via-indigo-900/80 to-slate-900 border-2 border-purple-500/60 rounded-2xl p-3 shadow-lg">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2.5">
@@ -134,15 +111,15 @@
           </div>
         </div>
         <div class="text-right">
-          <span class="text-[10px] text-[var(--muted-foreground)] uppercase font-semibold">Teto Total (12 Metas)</span>
-          <div class="text-xs font-bold font-mono text-[var(--foreground)]" id="kpi-meta-global">0% de R$ 9.178,00</div>
+          <span class="text-[10px] text-[var(--muted-foreground)] uppercase font-semibold">Teto Total (14 Metas)</span>
+          <div class="text-xs font-bold font-mono text-[var(--foreground)]" id="kpi-meta-global">0% de R$ 10.278,00</div>
           <div class="w-24 bg-[var(--background)] h-1.5 rounded-full overflow-hidden mt-1 ml-auto border border-[var(--border)]">
             <div id="kpi-bar-global" class="bg-emerald-500 h-full rounded-full transition-all" style="width: 0%"></div>
           </div>
         </div>
       </div>
 
-      <!-- 4 Cards de Formas de Pagamento em Grid 2x2 para celular -->
+      <!-- 4 Cards de Formas de Pagamento -->
       <div class="grid grid-cols-2 gap-2 text-xs">
         <div class="bg-[var(--card-inner)] p-2 rounded-xl border border-[var(--border)]">
           <div class="flex items-center justify-between text-[11px]">
@@ -187,17 +164,15 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="font-bold text-xs">Falar Salário ou Gasto</h2>
-          <p class="text-[10px] text-[var(--muted-foreground)]">Fale no microfone ou clique nos atalhos</p>
+          <p class="text-[10px] text-[var(--muted-foreground)]">Reconhece valor, 14 metas e forma de pagamento</p>
         </div>
-        <div class="flex items-center gap-1.5">
-          <label class="flex items-center gap-1 text-[11px] bg-[var(--card-inner)] px-2 py-1 rounded-lg border border-[var(--border)] cursor-pointer">
-            <input id="chk-autosave" type="checkbox" checked class="accent-emerald-500 w-3 h-3" />
-            <span>⚡ Auto-salvar</span>
-          </label>
-        </div>
+        <label class="flex items-center gap-1 text-[11px] bg-[var(--card-inner)] px-2 py-1 rounded-lg border border-[var(--border)] cursor-pointer">
+          <input id="chk-autosave" type="checkbox" checked class="accent-emerald-500 w-3 h-3" />
+          <span>⚡ Auto-salvar</span>
+        </label>
       </div>
 
-      <!-- Botão Central de Microfone Grande e Caixa de Texto -->
+      <!-- Microfone Central e Entrada de Texto -->
       <div class="flex gap-2">
         <button id="btn-mic" onclick="alternarGravacaoVoz()" class="w-12 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center shadow-md shrink-0 active:scale-95 transition-all">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,20 +187,20 @@
         </button>
       </div>
 
-      <!-- Atalhos de Teste Rápido (Cartão de crédito em destaque) -->
+      <!-- Atalhos de Teste Rápido com as Novas Metas -->
       <div class="flex flex-wrap gap-1 items-center text-[11px]">
-        <span class="text-[10px] text-[var(--muted-foreground)] mr-0.5">Testar:</span>
+        <span class="text-[10px] text-[var(--muted-foreground)] mr-0.5">Atalhos:</span>
         <button onclick="simularFala('50 no cartão de crédito')" class="px-2 py-1 rounded-lg bg-purple-950/60 text-purple-300 border border-purple-500/40 font-bold active:scale-95">
-          💳 "50 no cartão de crédito"
+          💳 "50 no crédito"
+        </button>
+        <button onclick="simularFala('Almoço 35 no débito')" class="px-2 py-1 rounded-lg bg-rose-950/40 text-rose-300 border border-rose-500/30 active:scale-95">
+          🍽️ "Almoço 35"
+        </button>
+        <button onclick="simularFala('Supermercado 120 no pix')" class="px-2 py-1 rounded-lg bg-orange-950/40 text-orange-300 border border-orange-500/30 active:scale-95">
+          🛒 "Mercado 120"
         </button>
         <button onclick="simularFala('Salário 10000')" class="px-2 py-1 rounded-lg bg-emerald-950/60 text-emerald-300 border border-emerald-500/40 font-bold active:scale-95">
           💵 "Salário 10000"
-        </button>
-        <button onclick="simularFala('Aluguel 1535 no pix')" class="px-2 py-1 rounded-lg bg-[var(--card-inner)] border border-[var(--border)] active:scale-95">
-          🏠 "Aluguel 1535"
-        </button>
-        <button onclick="simularFala('Combustível 100 no débito')" class="px-2 py-1 rounded-lg bg-[var(--card-inner)] border border-[var(--border)] active:scale-95">
-          ⛽ "Combustível 100"
         </button>
       </div>
 
@@ -248,20 +223,22 @@
         </div>
 
         <div class="text-xs">
-          <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5">Categoria (Somente as 12 Oficiais)</label>
+          <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5">Categoria (14 Metas Oficiais)</label>
           <select id="campo-categoria" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold">
-            <option value="ALUGUEL">🏠 ALUGUEL</option>
-            <option value="PARCELA CARRO">🚗 PARCELA CARRO</option>
-            <option value="CARTÃO">💳 CARTÃO</option>
-            <option value="POUPANÇA">🏦 POUPANÇA</option>
-            <option value="COMBUSTIVEL">⛽ COMBUSTIVEL</option>
-            <option value="PLANO DE SAUDE">🩺 PLANO DE SAUDE</option>
-            <option value="CONTA DE LUZ">💡 CONTA DE LUZ</option>
-            <option value="CONTA DE AGUA">🚰 CONTA DE AGUA</option>
-            <option value="CONTA DE INTERNET">🌐 CONTA DE INTERNET</option>
-            <option value="SEGURO MOTO/CARRO">🛡️ SEGURO MOTO/CARRO</option>
-            <option value="CONTA TELEFONE">📱 CONTA TELEFONE</option>
-            <option value="OUTROS GASTOS">📦 OUTROS GASTOS</option>
+            <option value="ALUGUEL">🏠 ALUGUEL (R$ 1.535)</option>
+            <option value="PARCELA CARRO">🚗 PARCELA CARRO (R$ 1.413)</option>
+            <option value="CARTÃO">💳 CARTÃO (R$ 2.700)</option>
+            <option value="POUPANÇA">🏦 POUPANÇA (R$ 500)</option>
+            <option value="COMBUSTIVEL">⛽ COMBUSTIVEL (R$ 400)</option>
+            <option value="PLANO DE SAUDE">🩺 PLANO DE SAUDE (R$ 500)</option>
+            <option value="CONTA DE LUZ">💡 CONTA DE LUZ (R$ 110)</option>
+            <option value="CONTA DE AGUA">🚰 CONTA DE AGUA (R$ 70)</option>
+            <option value="CONTA DE INTERNET">🌐 CONTA DE INTERNET (R$ 110)</option>
+            <option value="SEGURO MOTO/CARRO">🛡️ SEGURO MOTO/CARRO (R$ 40)</option>
+            <option value="CONTA TELEFONE">📱 CONTA TELEFONE (R$ 30)</option>
+            <option value="ALIMENTAÇÃO">🍽️ ALIMENTAÇÃO (R$ 500)</option>
+            <option value="SUPERMERCADO">🛒 SUPERMERCADO (R$ 600)</option>
+            <option value="OUTROS GASTOS">📦 OUTROS GASTOS (R$ 300)</option>
             <option value="Salário">💵 Salário (Receita)</option>
             <option value="Vale Alimentação">🍽️ Vale Alimentação (Receita)</option>
           </select>
@@ -279,7 +256,7 @@
 
         <div>
           <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5">Descrição</label>
-          <input id="campo-desc" type="text" placeholder="Ex: Fatura, almoço, aluguel..." class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs" />
+          <input id="campo-desc" type="text" placeholder="Ex: Almoço, combustível, compras..." class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs" />
         </div>
 
         <!-- Alerta de Teto -->
@@ -290,13 +267,13 @@
       </div>
     </section>
 
-    <!-- 4 ABAS DE NAVEGAÇÃO COMPACTAS PARA CELULAR -->
+    <!-- 4 ABAS DE NAVEGAÇÃO -->
     <nav class="grid grid-cols-4 bg-[var(--card)] p-1 rounded-2xl border border-[var(--border)] text-xs font-bold gap-1 shadow-sm">
       <button id="tab-btn-pizza" onclick="mudarAba('pizza')" class="nav-pill active py-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5">
-        <span class="text-sm">📊</span> <span class="text-[11px]">Pizza</span>
+        <span class="text-sm">📊</span> <span class="text-[11px]">2 Pizzas</span>
       </button>
       <button id="tab-btn-tetos" onclick="mudarAba('tetos')" class="nav-pill py-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5">
-        <span class="text-sm">🎯</span> <span class="text-[11px]">12 Metas</span>
+        <span class="text-sm">🎯</span> <span class="text-[11px]">14 Metas</span>
       </button>
       <button id="tab-btn-extrato" onclick="mudarAba('extrato')" class="nav-pill py-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5">
         <span class="text-sm">📋</span> <span class="text-[11px]">Extrato</span>
@@ -306,48 +283,87 @@
       </button>
     </nav>
 
-    <!-- ABA 1: GRÁFICO DE PIZZA (12 METAS) -->
-    <div id="aba-pizza" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5">
-      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
-        <div>
-          <h3 class="font-bold text-xs">Divisão dos Gastos (Pizza)</h3>
-          <p class="text-[10px] text-[var(--muted-foreground)]">Proporção das 12 metas no mês atual</p>
-        </div>
-        <span class="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 font-bold font-mono" id="badge-total-pizza">
-          R$ 0,00
-        </span>
-      </div>
-
-      <div class="flex flex-col items-center justify-center gap-3 py-1">
-        <div class="relative w-44 h-44 flex items-center justify-center">
-          <svg id="svg-pie" class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />
-          </svg>
-          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <span class="text-[9px] uppercase font-bold text-[var(--muted-foreground)]">Total Gasto</span>
-            <span class="text-xs font-black font-mono text-[var(--foreground)]" id="pie-center-val">R$ 0,00</span>
+    <!-- ========================================================================= -->
+    <!-- ABA 1: OS 2 GRÁFICOS DE PIZZA (1. CATEGORIAS | 2. FORMAS DE PAGAMENTO) -->
+    <!-- ========================================================================= -->
+    <div id="aba-pizza" class="space-y-3">
+      
+      <!-- GRÁFICO 1: PIZZA POR FORMA DE PAGAMENTO (NOVO SOLICITADO!) -->
+      <div class="bg-[var(--card)] border-2 border-purple-500/40 rounded-2xl p-3 shadow-md space-y-2.5">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-base">💳</span>
+              <h3 class="font-extrabold text-xs text-purple-300">2º Gráfico: Formas de Pagamento</h3>
+            </div>
+            <p class="text-[10px] text-[var(--muted-foreground)]">PIX, Crédito, Débito e Vale Alimentação</p>
           </div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/30 font-bold font-mono" id="badge-total-pgto">
+            R$ 0,00
+          </span>
         </div>
 
-        <div id="pie-legend" class="w-full space-y-1 text-xs"></div>
+        <div class="flex flex-col items-center justify-center gap-2 py-1">
+          <div class="relative w-40 h-40 flex items-center justify-center">
+            <svg id="svg-pie-pgto" class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+              <span class="text-[9px] uppercase font-bold text-[var(--muted-foreground)]">Total Pago</span>
+              <span class="text-xs font-black font-mono text-[var(--foreground)]" id="pie-pgto-center-val">R$ 0,00</span>
+            </div>
+          </div>
+          <!-- Legenda das 4 formas de pagamento -->
+          <div id="pie-pgto-legend" class="w-full space-y-1 text-xs"></div>
+        </div>
       </div>
+
+      <!-- GRÁFICO 2: PIZZA POR CATEGORIA (14 METAS) -->
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-1.5">
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-base">🍕</span>
+              <h3 class="font-extrabold text-xs">1º Gráfico: Divisão das 14 Metas</h3>
+            </div>
+            <p class="text-[10px] text-[var(--muted-foreground)]">Proporção por grupo de despesa</p>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold font-mono" id="badge-total-pizza">
+            R$ 0,00
+          </span>
+        </div>
+
+        <div class="flex flex-col items-center justify-center gap-2 py-1">
+          <div class="relative w-40 h-40 flex items-center justify-center">
+            <svg id="svg-pie-cat" class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+              <span class="text-[9px] uppercase font-bold text-[var(--muted-foreground)]">Total 14 Metas</span>
+              <span class="text-xs font-black font-mono text-[var(--foreground)]" id="pie-cat-center-val">R$ 0,00</span>
+            </div>
+          </div>
+          <div id="pie-cat-legend" class="w-full space-y-1 text-xs"></div>
+        </div>
+      </div>
+
     </div>
 
-    <!-- ABA 2: AS 12 METAS E OPÇÃO DE EDITAR -->
+    <!-- ABA 2: AS 14 METAS COM BOTÃO DE EDITAR -->
     <div id="aba-tetos" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5 hidden">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
-          <h3 class="font-bold text-xs">Tetos e Metas (Somente as 12)</h3>
-          <p class="text-[10px] text-[var(--muted-foreground)]">Ajuste os valores orçados conforme sua necessidade</p>
+          <h3 class="font-bold text-xs">Tetos e Metas (14 Categorias)</h3>
+          <p class="text-[10px] text-[var(--muted-foreground)]">Altere qualquer meta quando quiser</p>
         </div>
-        <button onclick="abrirModalEditarMetas()" class="text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-800 border border-[var(--border)] text-emerald-400 font-bold flex items-center gap-1">
-          <span>✏️</span> <span>Editar</span>
+        <button onclick="abrirModalEditarMetas()" class="text-[11px] px-2.5 py-1.5 rounded-xl bg-slate-800 border border-[var(--border)] text-emerald-400 font-bold flex items-center gap-1 active:scale-95">
+          <span>✏️</span> <span>Editar Metas</span>
         </button>
       </div>
       <div id="lista-tetos" class="space-y-2"></div>
     </div>
 
-    <!-- ABA 3: EXTRATO DO MÊS ATUAL -->
+    <!-- ABA 3: EXTRATO DO MÊS ATUAL (COM BOTÃO EDITAR E EXCLUIR) -->
     <div id="aba-extrato" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5 hidden">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <h3 class="font-bold text-xs">Extrato do Mês Atual</h3>
@@ -360,7 +376,7 @@
       <div id="lista-extrato" class="space-y-1.5"></div>
     </div>
 
-    <!-- ABA 4: MESES ANTERIORES (ARQUIVO DOS CORTES) -->
+    <!-- ABA 4: MESES ANTERIORES -->
     <div id="aba-meses" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-3 shadow-sm space-y-2.5 hidden">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
         <div>
@@ -374,64 +390,7 @@
       <div id="conteudo-mes-historico"></div>
     </div>
 
-    <!-- MODAL DO BOTÃO DE CORTE DE MÊS -->
-    <div id="modal-corte" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
-      <div class="bg-[var(--card)] border-2 border-purple-500/50 rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl">
-        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
-          <div class="flex items-center gap-2">
-            <span class="text-xl">✂️</span>
-            <div>
-              <h3 class="font-extrabold text-sm text-[var(--foreground)]">Fechamento do Mês</h3>
-              <p class="text-[10px] text-[var(--muted-foreground)]">Arquiva os gastos e inicia novo mês zerado</p>
-            </div>
-          </div>
-          <button onclick="fecharModalCorte()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
-        </div>
-
-        <div class="space-y-2.5 text-xs">
-          <div>
-            <label class="font-bold block mb-1 text-[var(--foreground)]">De qual mês esses gastos representam?</label>
-            <input id="input-corte-mes" type="text" placeholder="Ex: Outubro/2026, Novembro/2026..." class="w-full bg-[var(--card-inner)] border border-purple-500/50 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-purple-400" />
-          </div>
-
-          <div class="bg-[var(--card-inner)] p-2.5 rounded-xl border border-[var(--border)] space-y-1 text-[11px]">
-            <div class="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Será Arquivado:</div>
-            <div class="flex justify-between"><span>Entradas:</span><strong class="font-mono text-emerald-400" id="corte-resumo-rec">R$ 0,00</strong></div>
-            <div class="flex justify-between"><span>Gastos:</span><strong class="font-mono text-rose-400" id="corte-resumo-desp">R$ 0,00</strong></div>
-            <div class="flex justify-between"><span>Saldo Livre:</span><strong class="font-mono text-teal-400" id="corte-resumo-saldo">R$ 0,00</strong></div>
-            <div class="flex justify-between"><span>Lançamentos:</span><strong class="font-mono" id="corte-resumo-qtd">0 itens</strong></div>
-          </div>
-
-          <div class="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px]">
-            💡 Ao confirmar, estes dados vão para a aba <strong>Meses Anteriores</strong> e o app e a planilha voltam totalmente zerados para o próximo mês!
-          </div>
-        </div>
-
-        <div class="flex justify-end gap-2 pt-1 border-t border-[var(--border)]">
-          <button onclick="fecharModalCorte()" class="px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-semibold">Cancelar</button>
-          <button onclick="confirmarCorteMes()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-extrabold shadow-md active:scale-95">
-            Confirmar e Zerar Mês
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL DE EDIÇÃO DE METAS -->
-    <div id="modal-metas" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
-        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
-          <h3 class="font-bold text-xs text-[var(--foreground)]">✏️ Editar os Tetos das 12 Metas</h3>
-          <button onclick="fecharModalEditarMetas()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
-        </div>
-        <div id="campos-edicao-metas" class="space-y-1.5 overflow-y-auto pr-1 flex-1 text-xs"></div>
-        <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
-          <button onclick="fecharModalEditarMetas()" class="px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs">Cancelar</button>
-          <button onclick="salvarMetasEditadas()" class="px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold active:scale-95">Salvar</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL DE EDIÇÃO DE LANÇAMENTO (VALOR E TIPO DE GASTO) -->
+    <!-- MODAL DE EDIÇÃO DE LANÇAMENTO (VALOR E CATEGORIA) -->
     <div id="modal-editar-lancamento" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
       <div class="bg-[var(--card)] border-2 border-blue-500/50 rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl">
         <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
@@ -454,7 +413,7 @@
           </div>
 
           <div>
-            <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5 font-bold">Categoria (Tipo de Gasto)</label>
+            <label class="text-[10px] text-[var(--muted-foreground)] block mb-0.5 font-bold">Categoria (14 Metas Oficiais)</label>
             <select id="edit-lanc-categoria" class="w-full bg-[var(--card-inner)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-blue-500">
               <option value="ALUGUEL">🏠 ALUGUEL</option>
               <option value="PARCELA CARRO">🚗 PARCELA CARRO</option>
@@ -467,6 +426,8 @@
               <option value="CONTA DE INTERNET">🌐 CONTA DE INTERNET</option>
               <option value="SEGURO MOTO/CARRO">🛡️ SEGURO MOTO/CARRO</option>
               <option value="CONTA TELEFONE">📱 CONTA TELEFONE</option>
+              <option value="ALIMENTAÇÃO">🍽️ ALIMENTAÇÃO</option>
+              <option value="SUPERMERCADO">🛒 SUPERMERCADO</option>
               <option value="OUTROS GASTOS">📦 OUTROS GASTOS</option>
               <option value="Salário">💵 Salário (Receita)</option>
               <option value="Vale Alimentação">🍽️ Vale Alimentação (Receita)</option>
@@ -507,6 +468,59 @@
       </div>
     </div>
 
+    <!-- MODAL DE CORTE DE MÊS -->
+    <div id="modal-corte" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
+      <div class="bg-[var(--card)] border-2 border-purple-500/50 rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">✂️</span>
+            <div>
+              <h3 class="font-extrabold text-sm text-[var(--foreground)]">Fechamento do Mês</h3>
+              <p class="text-[10px] text-[var(--muted-foreground)]">Arquiva os gastos e inicia novo mês zerado</p>
+            </div>
+          </div>
+          <button onclick="fecharModalCorte()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
+        </div>
+
+        <div class="space-y-2.5 text-xs">
+          <div>
+            <label class="font-bold block mb-1 text-[var(--foreground)]">De qual mês esses gastos representam?</label>
+            <input id="input-corte-mes" type="text" placeholder="Ex: Outubro/2026, Novembro/2026..." class="w-full bg-[var(--card-inner)] border border-purple-500/50 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-purple-400" />
+          </div>
+
+          <div class="bg-[var(--card-inner)] p-2.5 rounded-xl border border-[var(--border)] space-y-1 text-[11px]">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Será Arquivado:</div>
+            <div class="flex justify-between"><span>Entradas:</span><strong class="font-mono text-emerald-400" id="corte-resumo-rec">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Gastos:</span><strong class="font-mono text-rose-400" id="corte-resumo-desp">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Saldo Livre:</span><strong class="font-mono text-teal-400" id="corte-resumo-saldo">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Lançamentos:</span><strong class="font-mono" id="corte-resumo-qtd">0 itens</strong></div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-1 border-t border-[var(--border)]">
+          <button onclick="fecharModalCorte()" class="px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-semibold">Cancelar</button>
+          <button onclick="confirmarCorteMes()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-extrabold shadow-md active:scale-95">
+            Confirmar e Zerar Mês
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE EDIÇÃO DE METAS -->
+    <div id="modal-metas" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 z-50 hidden">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 max-w-sm w-full space-y-3 shadow-2xl max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+          <h3 class="font-bold text-xs text-[var(--foreground)]">✏️ Editar os Tetos das 14 Metas</h3>
+          <button onclick="fecharModalEditarMetas()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
+        </div>
+        <div id="campos-edicao-metas" class="space-y-1.5 overflow-y-auto pr-1 flex-1 text-xs"></div>
+        <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
+          <button onclick="fecharModalEditarMetas()" class="px-3 py-1.5 rounded-xl border border-[var(--border)] text-xs">Cancelar</button>
+          <button onclick="salvarMetasEditadas()" class="px-4 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold active:scale-95">Salvar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL QR CODE -->
     <div id="modal-qr" class="fixed inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
       <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 max-w-xs w-full space-y-3 shadow-2xl text-center">
@@ -526,7 +540,34 @@
   </div>
 
   <script>
-    // ESTRITAMENTE AS 12 METAS OFICIAIS DO USUÁRIO (NENHUMA OUTRA EXISTE)
+    // =========================================================================
+    // ENDPOINTS DE SINCRONIZAÇÃO EM TEMPO REAL (CELULAR E COMPUTADOR)
+    // =========================================================================
+    const URL_TUNEL = "https://grant-forms-hotels-december.trycloudflare.com";
+    const ENDPOINTS_API = [
+      URL_TUNEL + "/api",
+      "http://127.0.0.1:8090/api",
+      "http://localhost:8090/api"
+    ];
+
+    async function chamarAPI(rota, options = {}) {
+      for (const base of ENDPOINTS_API) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const res = await fetch(`${base}${rota}`, { ...options, signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (res.ok) {
+            return await res.json();
+          }
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // AS 14 METAS OFICIAIS (COM ALIMENTAÇÃO E SUPERMERCADO ADICIONADOS)
+    // =========================================================================
     const CATEGORIAS_OFICIAIS = [
       { nome: "ALUGUEL", icone: "🏠", teto: 1535.0, cor: "#3b82f6" },
       { nome: "PARCELA CARRO", icone: "🚗", teto: 1413.0, cor: "#06b6d4" },
@@ -539,6 +580,8 @@
       { nome: "CONTA DE INTERNET", icone: "🌐", teto: 110.0, cor: "#6366f1" },
       { nome: "SEGURO MOTO/CARRO", icone: "🛡️", teto: 40.0, cor: "#ec4899" },
       { nome: "CONTA TELEFONE", icone: "📱", teto: 30.0, cor: "#8b5cf6" },
+      { nome: "ALIMENTAÇÃO", icone: "🍽️", teto: 500.0, cor: "#f43f5e" },
+      { nome: "SUPERMERCADO", icone: "🛒", teto: 600.0, cor: "#f97316" },
       { nome: "OUTROS GASTOS", icone: "📦", teto: 300.0, cor: "#64748b" }
     ];
 
@@ -555,7 +598,7 @@
     }
 
     function carregarMetasLocais() {
-      const salvas = localStorage.getItem("vozfin_metas_v4");
+      const salvas = localStorage.getItem("vozfin_metas_14");
       if (salvas) {
         try {
           const dict = JSON.parse(salvas);
@@ -569,7 +612,7 @@
     }
 
     function carregarLancamentosLocais() {
-      const dados = localStorage.getItem("vozfin_lancamentos_v4");
+      const dados = localStorage.getItem("vozfin_lancamentos_14");
       if (dados) {
         try {
           const arr = JSON.parse(dados);
@@ -582,11 +625,11 @@
           });
         } catch(e) {}
       }
-      return []; // Totalmente zerado
+      return [];
     }
 
     function carregarHistoricoLocal() {
-      const dados = localStorage.getItem("vozfin_historico_v4");
+      const dados = localStorage.getItem("vozfin_historico_14");
       if (dados) {
         try { return JSON.parse(dados); } catch(e) {}
       }
@@ -600,7 +643,7 @@
         if (el) el.classList.toggle("hidden", a !== aba);
         if (btn) btn.classList.toggle("active", a !== aba);
       });
-      if (aba === "pizza") renderizarGraficoPizza();
+      if (aba === "pizza") renderizarOsDoisGraficosPizza();
       if (aba === "meses") atualizarAbaMesesAnteriores();
     }
 
@@ -618,7 +661,9 @@
       });
     }
 
-    // INTERPRETADOR POR VOZ COM PRIORIDADE TOTAL PARA CARTÃO DE CRÉDITO
+    // =========================================================================
+    // INTERPRETAÇÃO POR VOZ COM AS 14 METAS E PRIORIDADE DE CARTÃO
+    // =========================================================================
     function interpretarFrase(texto) {
       if (!texto || !texto.trim()) return;
       const t = texto.toLowerCase();
@@ -633,7 +678,7 @@
         }
       }
 
-      // 2. Detectar Receitas (Salário ou Vale Alimentação)
+      // 2. Receitas (Salário ou Vale)
       if (t.includes("salário") || t.includes("salario")) {
         document.getElementById("campo-tipo").value = "Receita";
         document.getElementById("campo-categoria").value = "Salário";
@@ -654,7 +699,7 @@
       // 3. Despesa
       document.getElementById("campo-tipo").value = "Despesa";
 
-      // 4. REGRA DE OURO: Se falou 'cartão de crédito' ou 'crédito' -> vai DIRETO e IMEDIATAMENTE para categoria 'CARTÃO' e forma 'Cartão de Crédito'
+      // 4. Prioridade Absoluta: Falou Cartão de Crédito ➔ vai direto para CARTÃO
       const eCartaoCredito = (
         t.includes("cartão de crédito") || t.includes("cartao de credito") ||
         t.includes("no crédito") || t.includes("no credito") ||
@@ -671,7 +716,7 @@
         descSugerida = "Gasto no Cartão de Crédito";
         selecionarForma("Cartão de Crédito");
       } else {
-        // Demais formas de pagamento
+        // Formas de Pagamento
         if (t.includes("débito") || t.includes("debito") || t.includes("no débito") || t.includes("no debito")) {
           selecionarForma("Cartão de Débito");
         } else if (t.includes("vale") || t.includes("alimentação") || t.includes("refeição")) {
@@ -680,8 +725,14 @@
           selecionarForma("PIX");
         }
 
-        // Demais 11 Categorias Oficiais
-        if (t.includes("aluguel") || t.includes("imobiliaria") || t.includes("condomínio") || t.includes("condominio")) {
+        // Mapeamento das 14 Metas Oficiais
+        if (t.includes("mercado") || t.includes("supermercado") || t.includes("compras") || t.includes("atacadão") || t.includes("assaí")) {
+          catDetectada = "SUPERMERCADO";
+          descSugerida = "Supermercado";
+        } else if (t.includes("almoço") || t.includes("almoco") || t.includes("jantar") || t.includes("lanche") || t.includes("restaurante") || t.includes("ifood") || t.includes("alimentação") || t.includes("comida")) {
+          catDetectada = "ALIMENTAÇÃO";
+          descSugerida = "Alimentação";
+        } else if (t.includes("aluguel") || t.includes("imobiliaria") || t.includes("condomínio") || t.includes("condominio")) {
           catDetectada = "ALUGUEL";
           descSugerida = "Aluguel Mensal";
         } else if (t.includes("parcela carro") || t.includes("parcela do carro") || t.includes("prestação do carro") || t.includes("financiamento")) {
@@ -772,7 +823,7 @@
     function alternarGravacaoVoz() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        alert("Microfone não suportado no navegador atual. Use o teclado ou os botões de atalho!");
+        alert("Microfone não suportado no navegador atual. Use o teclado ou atalhos!");
         return;
       }
 
@@ -816,7 +867,10 @@
       recognition.start();
     }
 
-    function salvarLancamento() {
+    // =========================================================================
+    // SALVAR, EDITAR E EXCLUIR COM SINCRONIZAÇÃO EM NUVEM E EXCEL
+    // =========================================================================
+    async function salvarLancamento() {
       const tipo = document.getElementById("campo-tipo").value;
       const valor = parseFloat(document.getElementById("campo-valor").value) || 0;
       const categoria = document.getElementById("campo-categoria").value;
@@ -841,7 +895,7 @@
       };
 
       lancamentos.unshift(novo);
-      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
 
       document.getElementById("campo-valor").value = "";
       document.getElementById("campo-desc").value = "";
@@ -850,30 +904,105 @@
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
-      renderizarGraficoPizza();
+      renderizarOsDoisGraficosPizza();
       atualizarAlertaPreview();
 
-      // Envia ao backend local
-      fetch("http://127.0.0.1:8090/api/lancamentos", {
+      // Envia para o servidor e salva direto no Excel do Google Drive
+      atualizarStatusSync("Salvando na nuvem...", false);
+      const res = await chamarAPI("/lancamentos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(novo)
-      }).catch(() => {});
+      });
+      if (res && res.status === "ok") {
+        atualizarStatusSync("Sincronizado ✓", true);
+      } else {
+        atualizarStatusSync("Salvo localmente ✓", true);
+      }
     }
 
-    function excluirLancamento(id) {
+    async function salvarEdicaoLancamento() {
+      const id = document.getElementById("edit-lanc-id").value;
+      const valor = parseFloat(document.getElementById("edit-lanc-valor").value);
+      const categoria = document.getElementById("edit-lanc-categoria").value;
+      const tipo = document.getElementById("edit-lanc-tipo").value;
+      const forma = document.getElementById("edit-lanc-forma").value;
+      const desc = document.getElementById("edit-lanc-desc").value.trim() || categoria;
+
+      if (isNaN(valor) || valor <= 0) {
+        alert("Informe um valor maior que zero.");
+        return;
+      }
+
+      const idx = lancamentos.findIndex(l => l.id == id);
+      if (idx !== -1) {
+        lancamentos[idx].valor = valor;
+        lancamentos[idx].categoria = categoria;
+        lancamentos[idx].tipo = tipo;
+        lancamentos[idx].formaPagamento = forma;
+        lancamentos[idx].descricao = desc;
+
+        localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+
+        atualizarKPIs();
+        renderizarTetos();
+        renderizarExtrato();
+        renderizarOsDoisGraficosPizza();
+
+        atualizarStatusSync("Atualizando na nuvem...", false);
+        const res = await chamarAPI("/lancamentos/editar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: id,
+            valor: valor,
+            categoria: categoria,
+            tipo: tipo,
+            formaPagamento: forma,
+            descricao: desc
+          })
+        });
+        if (res && res.status === "ok") {
+          atualizarStatusSync("Sincronizado ✓", true);
+        }
+      }
+
+      fecharModalEditarLancamento();
+    }
+
+    async function excluirLancamento(id) {
       if (!confirm("Remover este lançamento?")) return;
       lancamentos = lancamentos.filter(l => l.id !== id);
-      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
-      renderizarGraficoPizza();
-      fetch(`http://127.0.0.1:8090/api/lancamentos/${id}`, { method: "DELETE" }).catch(() => {});
+      renderizarOsDoisGraficosPizza();
+
+      await chamarAPI(`/lancamentos/${id}`, { method: "DELETE" });
+      atualizarStatusSync("Sincronizado ✓", true);
+    }
+
+    function abrirModalEditarLancamento(id) {
+      const item = lancamentos.find(l => l.id == id);
+      if (!item) return;
+
+      document.getElementById("edit-lanc-id").value = item.id;
+      document.getElementById("edit-lanc-valor").value = item.valor;
+      document.getElementById("edit-lanc-categoria").value = item.categoria;
+      document.getElementById("edit-lanc-tipo").value = item.tipo || "Despesa";
+      document.getElementById("edit-lanc-forma").value = item.formaPagamento || "PIX";
+      document.getElementById("edit-lanc-desc").value = item.descricao || "";
+
+      document.getElementById("modal-editar-lancamento").classList.remove("hidden");
+    }
+
+    function fecharModalEditarLancamento() {
+      document.getElementById("modal-editar-lancamento").classList.add("hidden");
     }
 
     // =========================================================================
-    // FLUXO DO BOTÃO DE CORTE (FECHAMENTO DE MÊS)
+    // BOTÃO DE CORTE DE MÊS
     // =========================================================================
     function abrirModalCorte() {
       const agora = new Date();
@@ -896,7 +1025,7 @@
       document.getElementById("modal-corte").classList.add("hidden");
     }
 
-    function confirmarCorteMes() {
+    async function confirmarCorteMes() {
       const mesRef = document.getElementById("input-corte-mes").value.trim() || "Mês Fechado";
       const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
       const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
@@ -923,14 +1052,12 @@
       };
 
       historicoMeses.unshift(snapshot);
-      localStorage.setItem("vozfin_historico_v4", JSON.stringify(historicoMeses));
+      localStorage.setItem("vozfin_historico_14", JSON.stringify(historicoMeses));
 
-      // ZERA TUDO PARA O NOVO MÊS
       lancamentos = [];
-      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify([]));
+      localStorage.setItem("vozfin_lancamentos_14", JSON.stringify([]));
 
-      // Envia corte para a planilha no Excel
-      fetch("http://127.0.0.1:8090/api/corte", {
+      await chamarAPI("/corte", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -945,20 +1072,22 @@
           qtd_itens: snapshot.qtdLancamentos,
           observacoes: `Fechamento do mês ${mesRef}`
         })
-      }).catch(() => {});
+      });
 
       fecharModalCorte();
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
-      renderizarGraficoPizza();
+      renderizarOsDoisGraficosPizza();
       atualizarAbaMesesAnteriores();
 
-      alert(`🎉 Mês "${mesRef}" arquivado com sucesso!\n\nTudo foi zerado na planilha e no app para você iniciar o novo mês.`);
+      alert(`🎉 Mês "${mesRef}" arquivado com sucesso!\n\nTudo zerado na planilha e no app para o novo mês.`);
       mudarAba("meses");
     }
 
-    // MODAL DE EDIÇÃO DE METAS
+    // =========================================================================
+    // EDIÇÃO DE METAS
+    // =========================================================================
     function abrirModalEditarMetas() {
       const container = document.getElementById("campos-edicao-metas");
       container.innerHTML = METAS.map(m => `
@@ -969,7 +1098,7 @@
           </div>
           <div class="flex items-center gap-1">
             <span class="text-[var(--muted-foreground)] text-xs">R$</span>
-            <input type="number" step="10" id="input-meta-${m.nome.replace(/\s+/g, '_')}" value="${m.teto}" class="w-20 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1 text-right font-bold font-mono text-emerald-400 text-xs" />
+            <input type="number" step="10" id="input-meta-${m.nome.replace(/[\s\/]+/g, '_')}" value="${m.teto}" class="w-20 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1 text-right font-bold font-mono text-emerald-400 text-xs" />
           </div>
         </div>
       `).join("");
@@ -980,30 +1109,292 @@
       document.getElementById("modal-metas").classList.add("hidden");
     }
 
-    function salvarMetasEditadas() {
+    async function salvarMetasEditadas() {
       const dict = {};
       METAS.forEach(m => {
-        const inp = document.getElementById(`input-meta-${m.nome.replace(/\s+/g, '_')}`);
+        const inp = document.getElementById(`input-meta-${m.nome.replace(/[\s\/]+/g, '_')}`);
         if (inp) {
           const val = parseFloat(inp.value) || 0;
           m.teto = val;
           dict[m.nome] = val;
         }
       });
-      localStorage.setItem("vozfin_metas_v4", JSON.stringify(dict));
-      fetch("http://127.0.0.1:8090/api/metas", {
+      localStorage.setItem("vozfin_metas_14", JSON.stringify(dict));
+      await chamarAPI("/metas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dict)
-      }).catch(() => {});
+      });
 
       fecharModalEditarMetas();
       atualizarKPIs();
       renderizarTetos();
-      renderizarGraficoPizza();
+      renderizarOsDoisGraficosPizza();
     }
 
-    // ABA 4: MESES ANTERIORES
+    // =========================================================================
+    // RENDERIZAÇÃO DOS 2 GRÁFICOS DE PIZZA (1. CATEGORIAS | 2. FORMAS DE PGTO)
+    // =========================================================================
+    function renderizarOsDoisGraficosPizza() {
+      renderizarPizzaFormasPgto();
+      renderizarPizzaCategorias();
+    }
+
+    function renderizarPizzaFormasPgto() {
+      const svg = document.getElementById("svg-pie-pgto");
+      const centerVal = document.getElementById("pie-pgto-center-val");
+      const badgeTotal = document.getElementById("badge-total-pgto");
+      const legend = document.getElementById("pie-pgto-legend");
+
+      const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
+      const cred = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Crédito").reduce((a, b) => a + b.valor, 0);
+      const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
+      const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
+
+      const dados = [
+        { nome: "Cartão de Crédito", icone: "💳", valor: cred, cor: "#a855f7" },
+        { nome: "PIX", icone: "💠", valor: pix, cor: "#14b8a6" },
+        { nome: "Cartão de Débito", icone: "🏧", valor: deb, cor: "#0284c7" },
+        { nome: "Vale Alimentação", icone: "🍽️", valor: va, cor: "#f59e0b" }
+      ].filter(d => d.valor > 0);
+
+      const total = dados.reduce((a, b) => a + b.valor, 0);
+      centerVal.innerText = formatarMoeda(total);
+      badgeTotal.innerText = formatarMoeda(total);
+
+      if (total === 0) {
+        svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />';
+        legend.innerHTML = `
+          <div class="text-[var(--muted-foreground)] text-[11px] text-center py-2">
+            Nenhum pagamento registrado no mês atual.
+          </div>
+        `;
+        return;
+      }
+
+      const circ = 2 * Math.PI * 40;
+      let acumulado = 0;
+      let svgHtml = "";
+      let legendHtml = "";
+
+      dados.forEach(d => {
+        const pct = (d.valor / total);
+        const strokeLength = pct * circ;
+        const strokeDasharray = `${strokeLength} ${circ}`;
+        const strokeDashoffset = -acumulado;
+        acumulado += strokeLength;
+
+        svgHtml += `
+          <circle cx="50" cy="50" r="40" fill="transparent"
+            stroke="${d.cor}" stroke-width="20"
+            stroke-dasharray="${strokeDasharray}"
+            stroke-dashoffset="${strokeDashoffset}"
+            class="transition-all duration-500" />
+        `;
+
+        legendHtml += `
+          <div class="flex items-center justify-between py-0.5 border-b border-[var(--border)] last:border-0 text-[11px]">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.cor}"></span>
+              <span class="font-bold">${d.icone} ${d.nome}</span>
+            </div>
+            <div class="font-mono">
+              <strong>${formatarMoeda(d.valor)}</strong>
+              <span class="text-[var(--muted-foreground)] text-[10px]">(${(pct * 100).toFixed(0)}%)</span>
+            </div>
+          </div>
+        `;
+      });
+
+      svg.innerHTML = svgHtml;
+      legend.innerHTML = legendHtml;
+    }
+
+    function renderizarPizzaCategorias() {
+      const svg = document.getElementById("svg-pie-cat");
+      const centerVal = document.getElementById("pie-cat-center-val");
+      const badgeTotal = document.getElementById("badge-total-pizza");
+      const legend = document.getElementById("pie-cat-legend");
+
+      const dadosGastos = METAS.map(m => {
+        const val = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
+        return { ...m, valor: val };
+      }).filter(d => d.valor > 0);
+
+      const totalGastos = dadosGastos.reduce((a, b) => a + b.valor, 0);
+      centerVal.innerText = formatarMoeda(totalGastos);
+      badgeTotal.innerText = formatarMoeda(totalGastos);
+
+      if (totalGastos === 0) {
+        svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />';
+        legend.innerHTML = `
+          <div class="text-[var(--muted-foreground)] text-[11px] text-center py-2">
+            Nenhum gasto lançado nas 14 metas.
+          </div>
+        `;
+        return;
+      }
+
+      const circ = 2 * Math.PI * 40;
+      let acumulado = 0;
+      let svgHtml = "";
+      let legendHtml = "";
+
+      dadosGastos.forEach(d => {
+        const pct = (d.valor / totalGastos);
+        const strokeLength = pct * circ;
+        const strokeDasharray = `${strokeLength} ${circ}`;
+        const strokeDashoffset = -acumulado;
+        acumulado += strokeLength;
+
+        svgHtml += `
+          <circle cx="50" cy="50" r="40" fill="transparent"
+            stroke="${d.cor}" stroke-width="20"
+            stroke-dasharray="${strokeDasharray}"
+            stroke-dashoffset="${strokeDashoffset}"
+            class="transition-all duration-500" />
+        `;
+
+        legendHtml += `
+          <div class="flex items-center justify-between py-0.5 border-b border-[var(--border)] last:border-0 text-[11px]">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.cor}"></span>
+              <span class="font-bold">${d.icone} ${d.nome}</span>
+            </div>
+            <div class="font-mono">
+              <strong>${formatarMoeda(d.valor)}</strong>
+              <span class="text-[var(--muted-foreground)] text-[10px]">(${(pct * 100).toFixed(0)}%)</span>
+            </div>
+          </div>
+        `;
+      });
+
+      svg.innerHTML = svgHtml;
+      legend.innerHTML = legendHtml;
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO DOS DEMAIS ELEMENTOS
+    // =========================================================================
+    function atualizarKPIs() {
+      const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
+      const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
+
+      const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
+      const cred = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Crédito").reduce((a, b) => a + b.valor, 0);
+      const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
+      const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
+
+      const saldoLivre = rec - (pix + deb);
+
+      document.getElementById("kpi-saldo-livre").innerText = formatarMoeda(saldoLivre);
+      document.getElementById("kpi-receitas").innerText = formatarMoeda(rec);
+      document.getElementById("kpi-despesas").innerText = formatarMoeda(desp);
+
+      const tetoTotal = METAS.reduce((a, b) => a + b.teto, 0);
+      const pctGlobal = tetoTotal > 0 ? (desp / tetoTotal) * 100 : 0;
+      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
+      document.getElementById("kpi-bar-global").style.width = `${Math.min(pctGlobal, 100)}%`;
+      document.getElementById("kpi-bar-global").className = pctGlobal > 100 ? "bg-rose-500 h-full rounded-full transition-all" : (pctGlobal >= 75 ? "bg-amber-500 h-full rounded-full transition-all" : "bg-emerald-500 h-full rounded-full transition-all");
+
+      document.getElementById("val-pix").innerText = formatarMoeda(pix);
+      document.getElementById("pct-pix").innerText = `${((pix / 7500) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-credito").innerText = formatarMoeda(cred);
+      document.getElementById("pct-credito").innerText = `${((cred / 2700) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-debito").innerText = formatarMoeda(deb);
+      document.getElementById("pct-debito").innerText = `${((deb / 1500) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-va").innerText = formatarMoeda(va);
+      document.getElementById("pct-va").innerText = `${((va / 690) * 100).toFixed(0)}%`;
+    }
+
+    function renderizarTetos() {
+      const container = document.getElementById("lista-tetos");
+      container.innerHTML = METAS.map(m => {
+        const gasto = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
+        const restante = m.teto - gasto;
+        const pct = m.teto > 0 ? (gasto / m.teto) * 100 : 0;
+
+        let corBar = "bg-emerald-500";
+        let statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-mono">Sobra ${formatarMoeda(restante)}</span>`;
+        if (pct > 100) {
+          corBar = "bg-rose-500";
+          statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 font-mono font-bold">+${formatarMoeda(Math.abs(restante))}</span>`;
+        } else if (pct >= 75) {
+          corBar = "bg-amber-500";
+          statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono font-bold">${pct.toFixed(0)}%</span>`;
+        }
+
+        return `
+          <div class="p-2.5 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] space-y-1.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm">${m.icone}</span>
+                <span class="font-bold text-xs">${m.nome}</span>
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-[var(--muted-foreground)]">
+              <span>Gasto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(gasto)}</strong></span>
+              <span>Teto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(m.teto)}</strong></span>
+            </div>
+            <div class="w-full bg-[var(--card)] h-1.5 rounded-full overflow-hidden border border-[var(--border)]">
+              <div class="${corBar} h-full rounded-full transition-all" style="width: ${Math.min(pct, 100)}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function filtrarExtrato(filtro) {
+      filtroAtual = filtro;
+      renderizarExtrato();
+    }
+
+    function renderizarExtrato() {
+      const container = document.getElementById("lista-extrato");
+      const filtrados = filtroAtual === "TODOS"
+        ? lancamentos
+        : lancamentos.filter(l => l.formaPagamento === filtroAtual);
+
+      if (!filtrados.length) {
+        container.innerHTML = `
+          <div class="text-center py-6 text-[var(--muted-foreground)] text-xs">
+            Nenhum lançamento no extrato.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtrados.map(l => {
+        const isRec = l.tipo === "Receita";
+        return `
+          <div class="p-2 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <div class="w-7 h-7 rounded-lg ${isRec ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center font-bold text-xs shrink-0">
+                ${isRec ? '↗' : '↘'}
+              </div>
+              <div>
+                <div class="font-bold text-[11px]">${l.descricao || l.categoria}</div>
+                <div class="text-[9px] text-[var(--muted-foreground)]">
+                  ${l.data} • <span class="font-semibold text-teal-400">${l.formaPagamento}</span> • ${l.categoria}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-mono font-bold text-xs ${isRec ? 'text-emerald-400' : 'text-rose-400'}">
+                ${isRec ? '+' : '-'}${formatarMoeda(l.valor)}
+              </span>
+              <button onclick="abrirModalEditarLancamento(${l.id})" class="text-xs px-2 py-1 rounded-lg bg-slate-800 text-blue-400 border border-[var(--border)] hover:bg-slate-700 active:scale-95" title="Editar valor e categoria">✏️</button>
+              <button onclick="excluirLancamento(${l.id})" class="text-xs px-1.5 py-1 rounded-lg text-rose-400 hover:bg-rose-500/10 active:scale-95" title="Excluir">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function atualizarAbaMesesAnteriores() {
       const select = document.getElementById("select-mes-historico");
       if (!historicoMeses.length) {
@@ -1055,296 +1446,8 @@
               <div class="text-xs font-bold font-mono ${item.saldoFinal >= 0 ? 'text-teal-400' : 'text-rose-400'}">${formatarMoeda(item.saldoFinal)}</div>
             </div>
           </div>
-
-          <div class="pt-1">
-            <div class="text-[11px] font-bold mb-1.5 flex justify-between items-center">
-              <span>Lançamentos (${item.lancamentos ? item.lancamentos.length : 0}):</span>
-              <button onclick="exportarMesCSV(${idx})" class="text-[10px] text-emerald-400 hover:underline">📥 Baixar CSV</button>
-            </div>
-            <div class="space-y-1 max-h-48 overflow-y-auto pr-1">
-              ${(item.lancamentos || []).map(l => `
-                <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-between text-[11px]">
-                  <div>
-                    <div class="font-bold">${l.descricao || l.categoria}</div>
-                    <div class="text-[9px] text-[var(--muted-foreground)]">${l.data} • ${l.categoria} • <span class="text-emerald-400">${l.formaPagamento}</span></div>
-                  </div>
-                  <div class="font-mono font-bold ${l.tipo === 'Receita' ? 'text-emerald-400' : 'text-rose-400'}">
-                    ${l.tipo === 'Receita' ? '+' : '-'}${formatarMoeda(l.valor)}
-                  </div>
-                </div>
-              `).join("")}
-            </div>
-          </div>
         </div>
       `;
-    }
-
-    function exportarMesCSV(idx) {
-      const item = historicoMeses[idx];
-      if (!item || !item.lancamentos) return;
-      let csv = "ID;Data;MesAno;Tipo;Categoria;Descricao;FormaPagamento;Valor\n";
-      item.lancamentos.forEach(l => {
-        csv += `${l.id};"${l.data}";"${l.mesAno}";"${l.tipo}";"${l.categoria}";"${l.descricao}";"${l.formaPagamento}";${l.valor.toFixed(2).replace('.', ',')}\n`;
-      });
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `VozFin_${item.mesReferencia.replace(/[\/\s]/g, '_')}.csv`;
-      a.click();
-    }
-
-    // ATUALIZAÇÃO DOS KPIS
-    function atualizarKPIs() {
-      const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
-      const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
-
-      const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
-      const cred = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Crédito").reduce((a, b) => a + b.valor, 0);
-      const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
-      const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
-
-      const saldoLivre = rec - (pix + deb);
-
-      document.getElementById("kpi-saldo-livre").innerText = formatarMoeda(saldoLivre);
-      document.getElementById("kpi-receitas").innerText = formatarMoeda(rec);
-      document.getElementById("kpi-despesas").innerText = formatarMoeda(desp);
-
-      const tetoTotal = METAS.reduce((a, b) => a + b.teto, 0);
-      const pctGlobal = tetoTotal > 0 ? (desp / tetoTotal) * 100 : 0;
-      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(0)}% de ${formatarMoeda(tetoTotal)}`;
-      document.getElementById("kpi-bar-global").style.width = `${Math.min(pctGlobal, 100)}%`;
-      document.getElementById("kpi-bar-global").className = pctGlobal > 100 ? "bg-rose-500 h-full rounded-full transition-all" : (pctGlobal >= 75 ? "bg-amber-500 h-full rounded-full transition-all" : "bg-emerald-500 h-full rounded-full transition-all");
-
-      document.getElementById("val-pix").innerText = formatarMoeda(pix);
-      document.getElementById("pct-pix").innerText = `${((pix / 7500) * 100).toFixed(0)}%`;
-
-      document.getElementById("val-credito").innerText = formatarMoeda(cred);
-      document.getElementById("pct-credito").innerText = `${((cred / 2700) * 100).toFixed(0)}%`;
-
-      document.getElementById("val-debito").innerText = formatarMoeda(deb);
-      document.getElementById("pct-debito").innerText = `${((deb / 1500) * 100).toFixed(0)}%`;
-
-      document.getElementById("val-va").innerText = formatarMoeda(va);
-      document.getElementById("pct-va").innerText = `${((va / 690) * 100).toFixed(0)}%`;
-    }
-
-    // RENDERIZAÇÃO DAS 12 METAS
-    function renderizarTetos() {
-      const container = document.getElementById("lista-tetos");
-      container.innerHTML = METAS.map(m => {
-        const gasto = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
-        const restante = m.teto - gasto;
-        const pct = m.teto > 0 ? (gasto / m.teto) * 100 : 0;
-
-        let corBar = "bg-emerald-500";
-        let statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-mono">Sobra ${formatarMoeda(restante)}</span>`;
-        if (pct > 100) {
-          corBar = "bg-rose-500";
-          statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-400 font-mono font-bold">+${formatarMoeda(Math.abs(restante))}</span>`;
-        } else if (pct >= 75) {
-          corBar = "bg-amber-500";
-          statusBadge = `<span class="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono font-bold">${pct.toFixed(0)}%</span>`;
-        }
-
-        return `
-          <div class="p-2.5 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] space-y-1.5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-1.5">
-                <span class="text-sm">${m.icone}</span>
-                <span class="font-bold text-xs">${m.nome}</span>
-              </div>
-              ${statusBadge}
-            </div>
-            <div class="flex items-center justify-between text-[11px] text-[var(--muted-foreground)]">
-              <span>Gasto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(gasto)}</strong></span>
-              <span>Teto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(m.teto)}</strong></span>
-            </div>
-            <div class="w-full bg-[var(--card)] h-1.5 rounded-full overflow-hidden border border-[var(--border)]">
-              <div class="${corBar} h-full rounded-full transition-all" style="width: ${Math.min(pct, 100)}%"></div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    // GRÁFICO DE PIZZA
-    function renderizarGraficoPizza() {
-      const svg = document.getElementById("svg-pie");
-      const centerVal = document.getElementById("pie-center-val");
-      const badgeTotal = document.getElementById("badge-total-pizza");
-      const legend = document.getElementById("pie-legend");
-
-      const dadosGastos = METAS.map(m => {
-        const val = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
-        return { ...m, valor: val };
-      }).filter(d => d.valor > 0);
-
-      const totalGastos = dadosGastos.reduce((a, b) => a + b.valor, 0);
-      centerVal.innerText = formatarMoeda(totalGastos);
-      badgeTotal.innerText = formatarMoeda(totalGastos);
-
-      if (totalGastos === 0) {
-        svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="transparent" stroke="#1a273e" stroke-width="20" />';
-        legend.innerHTML = `
-          <div class="text-[var(--muted-foreground)] text-[11px] text-center py-3">
-            Nenhum gasto lançado ainda. Toque no microfone acima para registrar o primeiro!
-          </div>
-        `;
-        return;
-      }
-
-      const circ = 2 * Math.PI * 40;
-      let acumulado = 0;
-      let svgHtml = "";
-      let legendHtml = "";
-
-      dadosGastos.forEach(d => {
-        const pct = (d.valor / totalGastos);
-        const strokeLength = pct * circ;
-        const strokeDasharray = `${strokeLength} ${circ}`;
-        const strokeDashoffset = -acumulado;
-        acumulado += strokeLength;
-
-        svgHtml += `
-          <circle cx="50" cy="50" r="40" fill="transparent"
-            stroke="${d.cor}" stroke-width="20"
-            stroke-dasharray="${strokeDasharray}"
-            stroke-dashoffset="${strokeDashoffset}"
-            class="transition-all duration-500" />
-        `;
-
-        legendHtml += `
-          <div class="flex items-center justify-between py-0.5 border-b border-[var(--border)] last:border-0 text-[11px]">
-            <div class="flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${d.cor}"></span>
-              <span class="font-bold">${d.icone} ${d.nome}</span>
-            </div>
-            <div class="font-mono">
-              <strong>${formatarMoeda(d.valor)}</strong>
-              <span class="text-[var(--muted-foreground)] text-[10px]">(${(pct * 100).toFixed(0)}%)</span>
-            </div>
-          </div>
-        `;
-      });
-
-      svg.innerHTML = svgHtml;
-      legend.innerHTML = legendHtml;
-    }
-
-    // EXTRATO
-    function filtrarExtrato(filtro) {
-      filtroAtual = filtro;
-      renderizarExtrato();
-    }
-
-    function renderizarExtrato() {
-      const container = document.getElementById("lista-extrato");
-      const filtrados = filtroAtual === "TODOS"
-        ? lancamentos
-        : lancamentos.filter(l => l.formaPagamento === filtroAtual);
-
-      if (!filtrados.length) {
-        container.innerHTML = `
-          <div class="text-center py-6 text-[var(--muted-foreground)] text-xs">
-            Nenhum lançamento no extrato.
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = filtrados.map(l => {
-        const isRec = l.tipo === "Receita";
-        return `
-          <div class="p-2 rounded-xl bg-[var(--card-inner)] border border-[var(--border)] flex items-center justify-between text-xs">
-            <div class="flex items-center gap-2">
-              <div class="w-7 h-7 rounded-lg ${isRec ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center font-bold text-xs shrink-0">
-                ${isRec ? '↗' : '↘'}
-              </div>
-              <div>
-                <div class="font-bold text-[11px]">${l.descricao || l.categoria}</div>
-                <div class="text-[9px] text-[var(--muted-foreground)]">
-                  ${l.data} • <span class="font-semibold text-teal-400">${l.formaPagamento}</span> • ${l.categoria}
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="font-mono font-bold text-xs ${isRec ? 'text-emerald-400' : 'text-rose-400'}">
-                ${isRec ? '+' : '-'}${formatarMoeda(l.valor)}
-              </span>
-              <button onclick="abrirModalEditarLancamento(${l.id})" class="text-xs px-2 py-1 rounded-lg bg-slate-800 text-blue-400 border border-[var(--border)] hover:bg-slate-700 active:scale-95" title="Editar valor e categoria">✏️</button>
-              <button onclick="excluirLancamento(${l.id})" class="text-xs px-1.5 py-1 rounded-lg text-rose-400 hover:bg-rose-500/10 active:scale-95" title="Excluir">🗑️</button>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    // =========================================================================
-    // EDIÇÃO DE LANÇAMENTO (VALOR E TIPO DE GASTO / CATEGORIA)
-    // =========================================================================
-    function abrirModalEditarLancamento(id) {
-      const item = lancamentos.find(l => l.id == id);
-      if (!item) return;
-
-      document.getElementById("edit-lanc-id").value = item.id;
-      document.getElementById("edit-lanc-valor").value = item.valor;
-      document.getElementById("edit-lanc-categoria").value = item.categoria;
-      document.getElementById("edit-lanc-tipo").value = item.tipo || "Despesa";
-      document.getElementById("edit-lanc-forma").value = item.formaPagamento || "PIX";
-      document.getElementById("edit-lanc-desc").value = item.descricao || "";
-
-      document.getElementById("modal-editar-lancamento").classList.remove("hidden");
-    }
-
-    function fecharModalEditarLancamento() {
-      document.getElementById("modal-editar-lancamento").classList.add("hidden");
-    }
-
-    function salvarEdicaoLancamento() {
-      const id = document.getElementById("edit-lanc-id").value;
-      const valor = parseFloat(document.getElementById("edit-lanc-valor").value);
-      const categoria = document.getElementById("edit-lanc-categoria").value;
-      const tipo = document.getElementById("edit-lanc-tipo").value;
-      const forma = document.getElementById("edit-lanc-forma").value;
-      const desc = document.getElementById("edit-lanc-desc").value.trim() || categoria;
-
-      if (isNaN(valor) || valor <= 0) {
-        alert("Por favor informe um valor maior que zero.");
-        return;
-      }
-
-      const idx = lancamentos.findIndex(l => l.id == id);
-      if (idx !== -1) {
-        lancamentos[idx].valor = valor;
-        lancamentos[idx].categoria = categoria;
-        lancamentos[idx].tipo = tipo;
-        lancamentos[idx].formaPagamento = forma;
-        lancamentos[idx].descricao = desc;
-
-        localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
-
-        atualizarKPIs();
-        renderizarTetos();
-        renderizarExtrato();
-        renderizarGraficoPizza();
-
-        // Sincroniza com backend local e planilha do Google Drive
-        fetch("http://127.0.0.1:8090/api/lancamentos/editar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: id,
-            valor: valor,
-            categoria: categoria,
-            tipo: tipo,
-            formaPagamento: forma,
-            descricao: desc
-          })
-        }).catch(() => {});
-      }
-
-      fecharModalEditarLancamento();
     }
 
     function abrirModalQR() {
@@ -1354,15 +1457,61 @@
       document.getElementById("modal-qr").classList.add("hidden");
     }
 
-    function forcarAtualizacaoTotal() {
-      localStorage.clear();
-      sessionStorage.clear();
-      if ('caches' in window) {
-        caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-          window.location.reload(true);
+    function atualizarStatusSync(texto, online) {
+      const el = document.getElementById("sync-texto");
+      const badge = document.getElementById("badge-sync");
+      if (el) el.innerText = texto;
+      if (badge) {
+        badge.className = online
+          ? "text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider flex items-center gap-1"
+          : "text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-wider flex items-center gap-1";
+      }
+    }
+
+    // =========================================================================
+    // SINCRONIZAÇÃO COMPLETA BIDIRECIONAL (CELULAR <-> NAVEGADOR)
+    // =========================================================================
+    async function sincronizarTotalComServidor() {
+      atualizarStatusSync("Sincronizando...", false);
+      const res = await chamarAPI("/lancamentos");
+      if (res && res.status === "ok" && Array.isArray(res.lancamentos)) {
+        const nomesValidos = CATEGORIAS_OFICIAIS.map(c => c.nome);
+        lancamentos = res.lancamentos.map(item => {
+          if (item.tipo === "Despesa" && !nomesValidos.includes(item.categoria)) {
+            item.categoria = "OUTROS GASTOS";
+          }
+          return item;
         });
+        localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+
+        // Busca histórico de meses fechados da planilha
+        const resHist = await chamarAPI("/historico");
+        if (resHist && resHist.status === "ok" && Array.isArray(resHist.historico)) {
+          historicoMeses = resHist.historico;
+          localStorage.setItem("vozfin_historico_14", JSON.stringify(historicoMeses));
+        }
+
+        // Busca metas da planilha
+        const resMetas = await chamarAPI("/metas");
+        if (resMetas && resMetas.status === "ok" && resMetas.metas) {
+          METAS = CATEGORIAS_OFICIAIS.map(c => ({
+            ...c,
+            teto: resMetas.metas[c.nome] !== undefined ? parseFloat(resMetas.metas[c.nome]) : c.teto
+          }));
+          localStorage.setItem("vozfin_metas_14", JSON.stringify(resMetas.metas));
+        }
+
+        atualizarKPIs();
+        renderizarTetos();
+        renderizarExtrato();
+        renderizarOsDoisGraficosPizza();
+        atualizarAbaMesesAnteriores();
+
+        const agora = new Date();
+        const horaStr = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        atualizarStatusSync(`Nuvem OK (${horaStr})`, true);
       } else {
-        window.location.reload(true);
+        atualizarStatusSync("Modo Offline", false);
       }
     }
 
@@ -1371,8 +1520,14 @@
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
-      renderizarGraficoPizza();
+      renderizarOsDoisGraficosPizza();
       atualizarAbaMesesAnteriores();
+      sincronizarTotalComServidor();
+
+      // Sincronização periódica a cada 15 segundos
+      setInterval(() => {
+        sincronizarTotalComServidor();
+      }, 15000);
     };
   </script>
 </body>
