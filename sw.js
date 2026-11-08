@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v16-menu-suspenso-completo';
+const CACHE_NAME = 'vozfin-v17-id-novo-pwa';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
