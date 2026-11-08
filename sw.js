@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v7-opcao2-fatura';
+const CACHE_NAME = 'vozfin-v8-despesas-pagas-exatas';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
