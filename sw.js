@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v5-instant-delete';
+const CACHE_NAME = 'vozfin-v6-offline-sync';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
