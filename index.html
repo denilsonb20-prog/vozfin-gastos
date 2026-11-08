@@ -74,39 +74,91 @@
         </div>
 
         <!-- MENU SUSPENSO DROPDOWN DOS 3 PONTINHOS -->
-        <div id="dropdown-menu-opcoes" class="hidden absolute top-11 left-0 z-50 w-64 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl p-1.5 space-y-1 backdrop-blur-md">
-          <button onclick="dispararInstalacaoApp()" class="w-full text-left px-3 py-2.5 rounded-xl bg-gradient-to-r from-sky-500/20 to-teal-500/10 hover:from-sky-500/30 hover:to-teal-500/20 text-sky-300 font-bold text-xs flex items-center gap-2.5 transition border border-sky-500/30">
-            <span class="text-base">📲</span>
+        <div id="dropdown-menu-opcoes" class="hidden absolute top-11 left-0 z-50 w-72 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl p-2 space-y-1 backdrop-blur-xl max-h-[85vh] overflow-y-auto">
+          
+          <!-- SEÇÃO 1: INSTALAÇÃO DO APP -->
+          <button onclick="dispararInstalacaoApp()" class="w-full text-left px-3 py-2.5 rounded-xl bg-gradient-to-r from-sky-500/20 to-teal-500/10 hover:from-sky-500/30 hover:to-teal-500/20 text-sky-300 font-bold text-xs flex items-center gap-2.5 transition border border-sky-500/30 shadow-sm active:scale-98">
+            <span class="text-lg">📲</span>
             <div>
               <div class="font-extrabold text-white">Adicionar ao Celular (App)</div>
               <div class="text-[10px] text-sky-200/80 font-normal">Instalar na tela inicial como app nativo</div>
             </div>
           </button>
-          
-          <button onclick="baixarPlanilhaExcel(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 font-medium text-xs flex items-center gap-2.5 transition">
+
+          <div class="py-1 border-t border-[var(--border)] my-1"></div>
+
+          <!-- SEÇÃO 2: CONTROLE & METAS -->
+          <div class="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">Controle & Gestão</div>
+
+          <button onclick="abrirModalCorte(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-purple-300 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base">✂️</span>
+            <div>
+              <div class="font-bold text-slate-200">Fechamento do Mês (Corte)</div>
+              <div class="text-[10px] text-slate-400">Arquivar gastos e virar cartão para novo mês</div>
+            </div>
+          </button>
+
+          <button onclick="abrirModalEditarMetas(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-teal-300 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base">🎯</span>
+            <div>
+              <div class="font-bold text-slate-200">Editar Metas e Tetos</div>
+              <div class="text-[10px] text-slate-400">Ajustar limites das 14 categorias</div>
+            </div>
+          </button>
+
+          <button onclick="alternarOcultarValoresTopo(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-amber-300 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base" id="menu-icone-olho">👁️</span>
+            <div>
+              <div class="font-bold text-slate-200">Modo Privacidade</div>
+              <div class="text-[10px] text-slate-400">Ocultar/exibir dados da parte de cima</div>
+            </div>
+          </button>
+
+          <div class="py-1 border-t border-[var(--border)] my-1"></div>
+
+          <!-- SEÇÃO 3: DADOS & NUVEM -->
+          <div class="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">Dados & Nuvem</div>
+
+          <button onclick="baixarPlanilhaExcel(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-emerald-300 font-medium text-xs flex items-center gap-2.5 transition">
             <span class="text-base">📥</span>
             <div>
-              <div class="font-bold">Baixar Planilha Excel</div>
-              <div class="text-[10px] text-slate-400">Exportar arquivo .xlsx</div>
+              <div class="font-bold text-slate-200">Baixar Planilha Excel</div>
+              <div class="text-[10px] text-slate-400">Exportar relatório completo em .xlsx</div>
             </div>
           </button>
 
-          <button onclick="abrirModalFirebase(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 font-medium text-xs flex items-center gap-2.5 transition">
+          <button onclick="sincronizarTotalComServidor(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-sky-300 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base">🔄</span>
+            <div>
+              <div class="font-bold text-slate-200">Sincronizar Nuvem Agora</div>
+              <div class="text-[10px] text-slate-400">Atualizar dados com o Google Firestore</div>
+            </div>
+          </button>
+
+          <button onclick="acaoRestaurarManualCelular(true); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-indigo-300 font-medium text-xs flex items-center gap-2.5 transition">
+            <span class="text-base">📦</span>
+            <div>
+              <div class="font-bold text-slate-200">Resgatar Dados do Aparelho</div>
+              <div class="text-[10px] text-slate-400">Recuperar histórico do cache do celular</div>
+            </div>
+          </button>
+
+          <button onclick="abrirModalFirebase(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-amber-300 font-medium text-xs flex items-center gap-2.5 transition">
             <span class="text-base">☁️</span>
             <div>
-              <div class="font-bold">Banco Google Firestore</div>
-              <div class="text-[10px] text-slate-400">Status da nuvem 24h</div>
+              <div class="font-bold text-slate-200">Conexão Google Firestore</div>
+              <div class="text-[10px] text-slate-400">Status e chaves da nuvem 24h</div>
             </div>
           </button>
 
-          <button onclick="abrirModalQR(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-slate-200 font-medium text-xs flex items-center gap-2.5 transition">
+          <button onclick="abrirModalQR(); fecharMenuOpcoes();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-800 text-teal-300 font-medium text-xs flex items-center gap-2.5 transition">
             <span class="text-base">📱</span>
             <div>
-              <div class="font-bold">QR Code de Acesso</div>
-              <div class="text-[10px] text-slate-400">Abrir em outro aparelho</div>
+              <div class="font-bold text-slate-200">QR Code de Acesso</div>
+              <div class="text-[10px] text-slate-400">Escanear para abrir em outro aparelho</div>
             </div>
           </button>
-        </div>
+        </div></div>
       </div>
 
       <!-- LADO DIREITO: STATUS E PRIVACIDADE -->
