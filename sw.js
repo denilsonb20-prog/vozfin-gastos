@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v9-fatura-desconto-imediato';
+const CACHE_NAME = 'vozfin-v10-corte-automatico-cartao';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
