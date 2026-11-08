@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="VozFin">
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icon-512.svg">
-  <title>VozFin — Controle de Gastos por Voz</title>
+  <title>VozFin — Controle Financeiro por Voz</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
@@ -43,7 +43,7 @@
     }
   </style>
 </head>
-<body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen pb-8">
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen pb-12 select-none">
 
   <div class="max-w-2xl mx-auto p-3 sm:p-5 space-y-4">
 
@@ -64,7 +64,7 @@
     </div>
 
     <!-- HEADER DO APP -->
-    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex items-center justify-between">
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-sm">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,22 +75,23 @@
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-base tracking-tight">VozFin Mobile</h1>
             <span id="sheet-badge" class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium">
-              Gastos Zerados ✓
+              12 Metas Ativas ✓
             </span>
           </div>
-          <p class="text-xs text-[var(--muted-foreground)]">Google Drive & Sheets • Sem Educação • Com Poupança</p>
+          <p class="text-xs text-[var(--muted-foreground)]">Salário e Gastos Zerados • Fechamento Mensal</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-1.5">
-        <button onclick="abrirModalQR()" class="text-xs px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 font-bold flex items-center gap-1 shadow-xs">
-          <span>📱</span> <span>Abrir no Celular</span>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <!-- BOTÃO DE CORTE DE MÊS -->
+        <button onclick="abrirModalCorte()" class="text-xs px-3 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-500 hover:to-indigo-500 font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer">
+          <span>✂️</span> <span>Fazer Corte de Mês</span>
         </button>
-        <button onclick="sincronizarAgora()" class="text-xs px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:opacity-80 font-medium" title="Sincronizar">
+        <button onclick="abrirModalQR()" class="text-xs px-2.5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 font-bold flex items-center gap-1 shadow-xs">
+          <span>📱 Celular</span>
+        </button>
+        <button onclick="sincronizarAgora()" class="text-xs px-2.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:opacity-80 font-medium" title="Sincronizar">
           🔄
-        </button>
-        <button onclick="exportarCSV()" class="text-xs px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:opacity-80 font-medium" title="Exportar CSV">
-          📥
         </button>
       </div>
     </div>
@@ -99,15 +100,15 @@
     <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border)]">
         <div>
-          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-500">Saldo Livre em Conta (PIX / Débito)</span>
-          <div class="text-2xl font-black font-mono mt-0.5 text-[var(--foreground)]" id="kpi-saldo-livre">R$ 10.000,00</div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-500">Saldo Livre em Conta (Entradas - PIX/Débito)</span>
+          <div class="text-2xl font-black font-mono mt-0.5 text-[var(--foreground)]" id="kpi-saldo-livre">R$ 0,00</div>
           <p class="text-xs text-[var(--muted-foreground)]">
-            Entradas Totais: <strong class="text-emerald-500 font-mono" id="kpi-receitas">R$ 10.690,00</strong> • Gastos: <strong class="text-rose-500 font-mono" id="kpi-despesas">R$ 0,00</strong>
+            Entradas: <strong class="text-emerald-500 font-mono" id="kpi-receitas">R$ 0,00</strong> • Gastos: <strong class="text-rose-500 font-mono" id="kpi-despesas">R$ 0,00</strong>
           </p>
         </div>
         <div class="bg-[var(--background)] px-3 py-2 rounded-xl border border-[var(--border)] text-right">
           <span class="text-xs text-[var(--muted-foreground)]">Consumo do Orçamento Total</span>
-          <div class="text-sm font-bold font-mono" id="kpi-meta-global">0,0% de R$ 10.558,00</div>
+          <div class="text-sm font-bold font-mono" id="kpi-meta-global">0,0% de R$ 9.178,00</div>
           <div class="w-full bg-[var(--card)] h-1.5 rounded-full overflow-hidden mt-1 border border-[var(--border)]">
             <div id="kpi-bar-global" class="bg-emerald-500 h-full rounded-full transition-all" style="width: 0%"></div>
           </div>
@@ -122,7 +123,7 @@
             <span id="pct-pix" class="font-mono">0%</span>
           </div>
           <div class="text-sm font-bold font-mono mt-1" id="val-pix">R$ 0,00</div>
-          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto PIX: R$ 7.500</div>
+          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 7.500</div>
         </div>
 
         <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
@@ -131,7 +132,7 @@
             <span id="pct-credito" class="font-mono">0%</span>
           </div>
           <div class="text-sm font-bold font-mono mt-1" id="val-credito">R$ 0,00</div>
-          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto fatura: R$ 2.500</div>
+          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 2.500</div>
         </div>
 
         <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
@@ -140,7 +141,7 @@
             <span id="pct-debito" class="font-mono">0%</span>
           </div>
           <div class="text-sm font-bold font-mono mt-1" id="val-debito">R$ 0,00</div>
-          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto débito: R$ 1.500</div>
+          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 1.500</div>
         </div>
 
         <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
@@ -149,23 +150,18 @@
             <span id="pct-va" class="font-mono">0%</span>
           </div>
           <div class="text-sm font-bold font-mono mt-1" id="val-va">R$ 0,00</div>
-          <div class="text-xs text-emerald-500 font-medium mt-0.5" id="sub-va">Livre: R$ 690,00</div>
+          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto: R$ 690</div>
         </div>
       </div>
     </div>
 
-    <!-- CENTRAL DE COMANDO DE VOZ -->
-    <div class="bg-[var(--card)] border-2 border-emerald-500/40 rounded-2xl p-4 shadow-md space-y-3">
-      <div class="flex flex-wrap items-center justify-between gap-2">
+    <!-- ÁREA DE COMANDO DE VOZ E ENTRADA RÁPIDA -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
         <div>
-          <h2 class="font-bold text-sm flex items-center gap-1.5">
-            <span>🎙️ Lançar por Comando de Voz</span>
-          </h2>
-          <p class="text-xs text-[var(--muted-foreground)]">
-            Fale o gasto, categoria e se foi PIX, Crédito, Débito ou Vale Alimentação
-          </p>
+          <h2 class="font-bold text-sm">Falar Salário ou Gasto</h2>
+          <p class="text-xs text-[var(--muted-foreground)]">Fale o que gastou ou fale seu salário/vale</p>
         </div>
-
         <div class="flex items-center gap-2">
           <label class="flex items-center gap-1.5 text-xs bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[var(--border)] cursor-pointer">
             <input id="chk-autosave" type="checkbox" checked class="accent-emerald-500" />
@@ -182,28 +178,37 @@
 
       <!-- Barra de Frase Falada ou Digitada -->
       <div class="flex gap-2">
-        <input id="input-frase-voz" type="text" placeholder="Toque em 'Falar Agora' ou digite ex: 50 poupança no pix..."
+        <input id="input-frase-voz" type="text" placeholder="Fale ou digite ex: salário 10000 ou gasolina 100 no crédito..."
           oninput="interpretarFrase(this.value)"
           class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)] focus:outline-none focus:border-emerald-500" />
-        <button onclick="salvarLancamento()" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 shrink-0">
+        <button onclick="salvarLancamento()" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 shrink-0 cursor-pointer">
           Lançar
         </button>
       </div>
 
-      <!-- Frases de Teste Rápido de 1 Toque -->
+      <!-- Botões de Teste Rápido de 1 Toque -->
       <div class="flex flex-wrap gap-1.5 items-center">
-        <span class="text-xs text-[var(--muted-foreground)]">Simular voz:</span>
-        <button onclick="simularFala('Poupança 200 reais no pix')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          🏦 "Poupança 200 no pix"
+        <span class="text-xs text-[var(--muted-foreground)]">Exemplos de voz:</span>
+        <button onclick="simularFala('Salário 10000')" class="text-xs px-2 py-1 rounded-lg bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 hover:border-emerald-500 transition-all">
+          💵 "Salário 10000"
         </button>
-        <button onclick="simularFala('Gastos no cartão 150 reais')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          💳 "Gastos no cartão 150"
+        <button onclick="simularFala('Vale alimentação 690')" class="text-xs px-2 py-1 rounded-lg bg-amber-950/40 text-amber-400 border border-amber-500/30 hover:border-amber-500 transition-all">
+          🍽️ "Vale alimentação 690"
         </button>
-        <button onclick="simularFala('Gastei 85 reais de gasolina no cartão de crédito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          ⛽ "85 gasolina no crédito"
+        <button onclick="simularFala('Aluguel 1535 no pix')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          🏠 "Aluguel 1535 no pix"
         </button>
-        <button onclick="simularFala('Almoço 38 e 50 no vale alimentação')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
-          🍽️ "Almoço 38,50 no vale"
+        <button onclick="simularFala('Parcela carro 1413 no debito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          🚗 "Parcela carro 1413"
+        </button>
+        <button onclick="simularFala('Cartão 350 reais')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          💳 "Cartão 350"
+        </button>
+        <button onclick="simularFala('Poupança 500 no pix')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          🏦 "Poupança 500"
+        </button>
+        <button onclick="simularFala('Combustível 100 no crédito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          ⛽ "Combustível 100"
         </button>
       </div>
 
@@ -225,88 +230,74 @@
           </div>
 
           <div class="col-span-2">
-            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Categoria da Planilha</label>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Categoria (12 Metas)</label>
             <select id="campo-categoria" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-semibold">
-              <option value="Poupança">🏦 Poupança</option>
-              <option value="Gastos no Cartão">💳 Gastos no Cartão</option>
-              <option value="Alimentação / Comer Fora">🍽️ Alimentação / Comer Fora</option>
-              <option value="Supermercado">🛒 Supermercado</option>
-              <option value="Combustível">⛽ Combustível</option>
-              <option value="Ônibus/Táxi/Uber">🚗 Ônibus / Táxi / Uber</option>
-              <option value="Reparos / Manutenção">🔧 Reparos / Manutenção Veicular</option>
-              <option value="Conta de Luz">💡 Conta de Luz</option>
-              <option value="Conta de Água">💧 Conta de Água</option>
-              <option value="Internet">🌐 Internet</option>
-              <option value="Telefone">📱 Telefone</option>
-              <option value="Aluguel/Parcelas do Imóvel">🏠 Aluguel / Parcelas do Imóvel</option>
-              <option value="Parcelamento do Carro">🚘 Parcelamento do Carro</option>
-              <option value="Seguro do Carro+MOTO">🛡️ Seguro do Carro + Moto</option>
-              <option value="Plano de Saúde">🏥 Plano de Saúde</option>
-              <option value="Farmácia / Consultas">💊 Farmácia / Consultas</option>
-              <option value="Suprimentos Pessoais">🧴 Suprimentos Pessoais</option>
-              <option value="Roupas">👕 Roupas</option>
-              <option value="Passeios / Lazer">🎉 Passeios / Lazer</option>
-              <option value="Netflix + Crunchyroll / Streamings">🎬 Netflix + Crunchyroll / Streamings</option>
-              <option value="Investimentos / Reserva">📈 Investimentos / Reserva</option>
-              <option value="Outros Gastos">📦 Outros Gastos</option>
+              <option value="ALUGUEL">🏠 ALUGUEL</option>
+              <option value="PARCELA CARRO">🚗 PARCELA CARRO</option>
+              <option value="CARTÃO">💳 CARTÃO</option>
+              <option value="POUPANÇA">🏦 POUPANÇA</option>
+              <option value="COMBUSTIVEL">⛽ COMBUSTIVEL</option>
+              <option value="PLANO DE SAUDE">🩺 PLANO DE SAUDE</option>
+              <option value="CONTA DE LUZ">💡 CONTA DE LUZ</option>
+              <option value="CONTA DE AGUA">🚰 CONTA DE AGUA</option>
+              <option value="CONTA DE INTERNET">🌐 CONTA DE INTERNET</option>
+              <option value="SEGURO MOTO/CARRO">🛡️ SEGURO MOTO/CARRO</option>
+              <option value="CONTA TELEFONE">📱 CONTA TELEFONE</option>
+              <option value="OUTROS GASTOS">📦 OUTROS GASTOS</option>
               <option value="Salário">💵 Salário (Receita)</option>
-              <option value="Vale Alimentação (Recarga)">💳 Vale Alimentação - Recarga (Receita)</option>
-              <option value="Renda extra">🚀 Renda Extra (Receita)</option>
+              <option value="Vale Alimentação">🍽️ Vale Alimentação (Receita)</option>
+              <option value="Outras Receitas">📈 Outras Receitas</option>
             </select>
           </div>
         </div>
 
-        <!-- Seletor de Forma de Pagamento (1 Toque) -->
-        <div>
-          <label class="text-xs text-[var(--muted-foreground)] block mb-1">Forma de Pagamento</label>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5" id="grupo-pgto">
-            <button type="button" onclick="selecionarPgto('PIX')" data-pgto="PIX" class="chip-pgto selected px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
-              💠 PIX
-            </button>
-            <button type="button" onclick="selecionarPgto('Cartão de Crédito')" data-pgto="Cartão de Crédito" class="chip-pgto px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
-              💳 Cartão Crédito
-            </button>
-            <button type="button" onclick="selecionarPgto('Cartão de Débito')" data-pgto="Cartão de Débito" class="chip-pgto px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
-              🏧 Cartão Débito
-            </button>
-            <button type="button" onclick="selecionarPgto('Vale Alimentação')" data-pgto="Vale Alimentação" class="chip-pgto px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
-              🍽️ Vale Alimentação
-            </button>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Forma de Pagamento</label>
+            <div class="grid grid-cols-4 gap-1">
+              <button type="button" onclick="selecionarForma('PIX')" id="btn-f-pix" class="chip-pgto selected text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">PIX</button>
+              <button type="button" onclick="selecionarForma('Cartão de Crédito')" id="btn-f-cred" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">Crédito</button>
+              <button type="button" onclick="selecionarForma('Cartão de Débito')" id="btn-f-deb" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">Débito</button>
+              <button type="button" onclick="selecionarForma('Vale Alimentação')" id="btn-f-va" class="chip-pgto text-center py-1.5 rounded-lg border border-[var(--border)] text-xs font-medium">Vale</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Descrição</label>
+            <input id="campo-desc" type="text" placeholder="Ex: Aluguel do mês, gasolina..." class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs" />
           </div>
         </div>
 
-        <div class="flex flex-col sm:flex-row gap-2 items-center justify-between pt-1">
-          <input id="campo-descricao" type="text" placeholder="Descrição (ex: Aplicação Poupança ou Gasto Cartão)"
-            class="w-full sm:w-2/3 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs" />
-          <button onclick="salvarLancamento()" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer">
-            ✅ Confirmar e Gravar na Planilha
-          </button>
-        </div>
-
-        <div id="alerta-impacto-teto" class="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hidden">
+        <!-- Alerta de Teto / Meta -->
+        <div id="alerta-teto-preview" class="text-xs p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between">
+          <span id="alerta-teto-texto">Pronto para lançar.</span>
+          <span id="alerta-teto-pct" class="font-mono font-bold">0%</span>
         </div>
       </div>
     </div>
 
-    <!-- NAVEGAÇÃO ENTRE ABAS: PIZZA vs TETOS vs EXTRATO -->
-    <div class="flex bg-[var(--card)] p-1 rounded-xl border border-[var(--border)] text-xs font-semibold gap-1">
-      <button id="tab-btn-pizza" onclick="trocarAba('pizza')" class="nav-pill active flex-1 py-2 rounded-lg transition-all text-center flex items-center justify-center gap-1">
-        <span>🥧</span> <span>Gráfico Pizza</span>
+    <!-- ABAS DE NAVEGAÇÃO PRINCIPAIS (4 ABAS) -->
+    <div class="grid grid-cols-4 bg-[var(--card)] p-1 rounded-2xl border border-[var(--border)] text-xs font-bold gap-1">
+      <button id="tab-btn-pizza" onclick="mudarAba('pizza')" class="nav-pill active py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
+        <span>📊</span> <span>Pizza</span>
       </button>
-      <button id="tab-btn-tetos" onclick="trocarAba('tetos')" class="nav-pill flex-1 py-2 rounded-lg text-[var(--muted-foreground)] transition-all text-center flex items-center justify-center gap-1">
-        <span>🎯</span> <span>Tetos / Metas</span>
+      <button id="tab-btn-tetos" onclick="mudarAba('tetos')" class="nav-pill py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
+        <span>🎯</span> <span>12 Metas</span>
       </button>
-      <button id="tab-btn-extrato" onclick="trocarAba('extrato')" class="nav-pill flex-1 py-2 rounded-lg text-[var(--muted-foreground)] transition-all text-center flex items-center justify-center gap-1">
+      <button id="tab-btn-extrato" onclick="mudarAba('extrato')" class="nav-pill py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
         <span>📋</span> <span>Extrato (<span id="count-lanc">0</span>)</span>
+      </button>
+      <button id="tab-btn-meses" onclick="mudarAba('meses')" class="nav-pill py-2.5 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer">
+        <span>📅</span> <span>Anteriores</span>
       </button>
     </div>
 
-    <!-- ABA 1: GRÁFICO DE PIZZA DINÂMICO DOS GASTOS -->
+    <!-- ABA 1: GRÁFICO DE PIZZA DINÂMICO DOS GASTOS ATUAIS -->
     <div id="aba-pizza" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
       <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
         <div>
-          <h3 class="font-bold text-sm">Divisão Visual dos Gastos (Pizza)</h3>
-          <p class="text-xs text-[var(--muted-foreground)]">Veja a fatia que cada categoria ocupa no total</p>
+          <h3 class="font-bold text-sm">Divisão Visual das 12 Metas (Pizza)</h3>
+          <p class="text-xs text-[var(--muted-foreground)]">Fatia proporcional de cada categoria no mês ativo</p>
         </div>
         <span class="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold" id="badge-total-pizza">
           R$ 0,00
@@ -317,7 +308,6 @@
       <div id="container-pizza-visual" class="flex flex-col sm:flex-row items-center justify-center gap-6 py-2">
         <div class="relative w-52 h-52 flex items-center justify-center">
           <svg id="svg-pie" class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-            <!-- Fatias geradas dinamicamente via JS -->
             <circle cx="50" cy="50" r="40" fill="transparent" stroke="#334155" stroke-width="20" />
           </svg>
           <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
@@ -329,28 +319,31 @@
         <!-- Legenda das Fatias -->
         <div id="pie-legend" class="space-y-1.5 w-full sm:w-auto text-xs flex-1">
           <div class="text-[var(--muted-foreground)] text-xs text-center sm:text-left">
-            Nenhum gasto lançado ainda neste mês. Toque no microfone acima para registrar o primeiro!
+            Nenhum gasto lançado ainda neste mês. Fale seu salário e seus gastos no microfone acima!
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ABA 2: TETOS E METAS POR CATEGORIA COM ALERTA VISUAL -->
+    <!-- ABA 2: AS 12 METAS COM OPÇÃO DE EDIÇÃO -->
     <div id="aba-tetos" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3 hidden">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
         <div>
-          <h3 class="font-bold text-sm">Controle de Teto por Categoria</h3>
-          <p class="text-xs text-[var(--muted-foreground)]">Verde: dentro da meta • Amarelo: acima de 75% • Vermelho: teto estourado</p>
+          <h3 class="font-bold text-sm">Tetos e Metas (12 Categorias)</h3>
+          <p class="text-xs text-[var(--muted-foreground)]">Verde: normal • Amarelo: >75% • Vermelho: estourado</p>
         </div>
+        <button onclick="abrirModalEditarMetas()" class="text-xs px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-[var(--border)] text-emerald-400 font-bold flex items-center gap-1 cursor-pointer">
+          <span>✏️</span> <span>Editar Metas</span>
+        </button>
       </div>
       <div id="lista-tetos" class="space-y-2.5"></div>
     </div>
 
-    <!-- ABA 3: EXTRATO DE LANÇAMENTOS COM FILTRO POR FORMA DE PAGAMENTO -->
+    <!-- ABA 3: EXTRATO DE LANÇAMENTOS DO MÊS ATUAL -->
     <div id="aba-extrato" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3 hidden">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <h3 class="font-bold text-sm">Histórico Gravado na Planilha</h3>
-        <div class="flex gap-1 text-xs">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5">
+        <h3 class="font-bold text-sm">Extrato do Mês Ativo</h3>
+        <div class="flex flex-wrap gap-1 text-xs">
           <button onclick="filtrarExtrato('TODOS')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Todos</button>
           <button onclick="filtrarExtrato('PIX')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">PIX</button>
           <button onclick="filtrarExtrato('Cartão de Crédito')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Crédito</button>
@@ -361,382 +354,433 @@
       <div id="lista-extrato" class="space-y-2"></div>
     </div>
 
+    <!-- ABA 4: MESES ANTERIORES (HISTÓRICO DE CORTES ARQUIVADOS) -->
+    <div id="aba-meses" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3 hidden">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5">
+        <div>
+          <h3 class="font-bold text-sm">📅 Gastos dos Meses Anteriores</h3>
+          <p class="text-xs text-[var(--muted-foreground)]">Consulte fechamentos arquivados e histórico de cortes</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="select-mes-historico" onchange="carregarMesHistorico(this.value)" class="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-1.5 text-xs font-bold">
+            <option value="">Nenhum mês arquivado ainda</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="conteudo-mes-historico" class="space-y-3">
+        <div class="text-center py-8 text-[var(--muted-foreground)] text-xs">
+          Nenhum fechamento de mês realizado ainda.<br>
+          Quando seu mês terminar, clique em <strong class="text-purple-400">"✂️ Fazer Corte de Mês"</strong> no topo para arquivar seus gastos e começar o próximo mês zerado!
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE CORTE DE MÊS -->
+    <div id="modal-corte" class="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">✂️</span>
+            <div>
+              <h3 class="font-bold text-sm text-[var(--foreground)]">Fechamento Mensal (Corte)</h3>
+              <p class="text-[11px] text-[var(--muted-foreground)]">Arquiva os gastos atuais e inicia um novo mês zerado</p>
+            </div>
+          </div>
+          <button onclick="fecharModalCorte()" class="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-slate-800">✕</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="font-bold block mb-1 text-[var(--foreground)]">De qual mês esses gastos representam?</label>
+            <input id="input-corte-mes" type="text" placeholder="Ex: Outubro/2026, Novembro/2026..." class="w-full bg-[var(--background)] border border-emerald-500/50 rounded-xl px-3 py-2 text-xs font-bold text-[var(--foreground)] focus:outline-none focus:border-emerald-500" />
+            <p class="text-[11px] text-[var(--muted-foreground)] mt-1">Este nome identificará este mês na aba de meses anteriores.</p>
+          </div>
+
+          <!-- Resumo do que será arquivado -->
+          <div class="bg-[var(--background)] p-3 rounded-xl border border-[var(--border)] space-y-1.5">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-[var(--muted-foreground)]">Resumo do Arquivamento:</div>
+            <div class="flex justify-between"><span>Entradas Registradas:</span><strong class="font-mono text-emerald-400" id="corte-resumo-rec">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Gastos Totais:</span><strong class="font-mono text-rose-400" id="corte-resumo-desp">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Saldo Economizado:</span><strong class="font-mono text-teal-400" id="corte-resumo-saldo">R$ 0,00</strong></div>
+            <div class="flex justify-between"><span>Lançamentos no Extrato:</span><strong class="font-mono" id="corte-resumo-qtd">0 itens</strong></div>
+          </div>
+
+          <div class="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[11px] leading-relaxed">
+            💡 <strong>O que acontece ao confirmar:</strong> Todos estes gastos serão salvos com segurança no histórico. Em seguida, seu extrato e gastos serão zerados para você começar o novo mês do zero!
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
+          <button onclick="fecharModalCorte()" class="px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-semibold hover:bg-slate-800">Cancelar</button>
+          <button onclick="confirmarCorteMes()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md cursor-pointer">
+            Confirmar Corte e Zerar Mês
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL DE EDIÇÃO DE METAS -->
+    <div id="modal-metas" class="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-[var(--border)] pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">✏️</span>
+            <div>
+              <h3 class="font-bold text-sm text-[var(--foreground)]">Editar Tetos das 12 Metas</h3>
+              <p class="text-[11px] text-[var(--muted-foreground)]">Ajuste os valores orçados conforme seu planejamento</p>
+            </div>
+          </div>
+          <button onclick="fecharModalEditarMetas()" class="text-xs px-2.5 py-1 rounded-lg border border-[var(--border)] hover:bg-slate-800">✕</button>
+        </div>
+
+        <div id="campos-edicao-metas" class="space-y-2 overflow-y-auto pr-1 flex-1 text-xs">
+          <!-- Gerado dinamicamente via JS com as 12 categorias -->
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
+          <button onclick="fecharModalEditarMetas()" class="px-3 py-2 rounded-xl border border-[var(--border)] text-xs font-semibold hover:bg-slate-800">Cancelar</button>
+          <button onclick="salvarMetasEditadas()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md cursor-pointer">
+            Salvar Metas
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL QR CODE PARA ABRIR NO CELULAR -->
-    <div id="modal-qr" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+    <div id="modal-qr" class="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
       <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-center">
         <div class="flex items-center justify-between">
           <h3 class="font-bold text-sm">📱 Aponte a Câmera do Celular</h3>
           <button onclick="fecharModalQR()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
         </div>
-        <p class="text-xs text-[var(--muted-foreground)]">
-          Escaneie o QR Code abaixo para abrir o <strong>VozFin Mobile</strong> direto no seu celular:
-        </p>
-        <div id="qr-svg-box" class="bg-white p-3 rounded-2xl inline-block mx-auto shadow-inner">
-          <img src="./qr_github_pages.svg" class="w-48 h-48 mx-auto" alt="QR Code GitHub Pages" />
+        <div class="bg-white p-3 rounded-xl inline-block shadow-inner mx-auto" id="qr-container">
+          <img src="./qr_github_pages.svg" alt="QR Code GitHub Pages" class="w-48 h-48 mx-auto" onerror="this.src='./qr_cloudflare.svg'" />
         </div>
-        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)] text-xs space-y-1.5 text-left">
-          <div>
-            <div class="font-bold text-emerald-500">🌐 Link Oficial GitHub Pages (Definitivo):</div>
-            <div class="font-mono text-[11px] select-all break-all text-white">https://denilsonb20-prog.github.io/vozfin-gastos/</div>
-          </div>
-          <div class="pt-1 border-t border-[var(--border)]">
-            <div class="font-bold text-sky-400">⚡ Link Túnel Direto PC (Cloudflare):</div>
-            <div id="qr-url-text" class="font-mono text-[11px] select-all break-all">https://grant-forms-hotels-december.trycloudflare.com</div>
-          </div>
+        <p class="text-xs text-[var(--muted-foreground)]">Ou acesse no celular pelo link:</p>
+        <div class="text-xs font-mono bg-[var(--background)] p-2 rounded-lg text-emerald-400 break-all select-all">
+          https://denilsonb20-prog.github.io/vozfin-gastos/
         </div>
-        <button onclick="fecharModalQR()" class="w-full py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs">Fechar</button>
-      </div>
-    </div>
-
-    <!-- MODAL INSTRUÇÕES DE INSTALAÇÃO NO CELULAR -->
-    <div id="modal-instrucoes-app" class="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
-      <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 max-w-sm w-full space-y-3.5 shadow-2xl">
-        <div class="flex items-center justify-between">
-          <h3 class="font-bold text-sm flex items-center gap-1.5">
-            <span>📲</span> <span>Como Instalar no seu Celular</span>
-          </h3>
-          <button onclick="fecharModalInstrucoes()" class="text-xs px-2 py-1 rounded-lg border border-[var(--border)]">✕</button>
-        </div>
-
-        <div class="space-y-2.5 text-xs text-[var(--foreground)]">
-          <div class="p-2.5 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-1">
-            <strong class="text-emerald-400 flex items-center gap-1">🤖 No Android (Google Chrome):</strong>
-            <p class="text-[var(--muted-foreground)]">Toque no menu de <strong>3 pontinhos</strong> no topo do navegador e selecione <strong>"Adicionar à tela inicial"</strong> ou <strong>"Instalar aplicativo"</strong>.</p>
-          </div>
-
-          <div class="p-2.5 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-1">
-            <strong class="text-sky-400 flex items-center gap-1">🍏 No iPhone (Safari):</strong>
-            <p class="text-[var(--muted-foreground)]">Toque no botão <strong>Compartilhar</strong> (quadrado com seta para cima) na barra inferior e escolha <strong>"Adicionar à Tela de Início"</strong>.</p>
-          </div>
-        </div>
-
-        <button onclick="fecharModalInstrucoes()" class="w-full py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs">Entendi</button>
       </div>
     </div>
 
   </div>
 
   <script>
-    // Registra Service Worker para permitir instalação de app nativo
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
-      });
-    }
+    // AS 12 METAS EXATAS ESPECIFICADAS PELO USUÁRIO
+    const CATEGORIAS_PADRAO = [
+      { nome: "ALUGUEL", icone: "🏠", teto: 1535.0, cor: "#3b82f6" },
+      { nome: "PARCELA CARRO", icone: "🚗", teto: 1413.0, cor: "#06b6d4" },
+      { nome: "CARTÃO", icone: "💳", teto: 2700.0, cor: "#a855f7" },
+      { nome: "POUPANÇA", icone: "🏦", teto: 500.0, cor: "#10b981" },
+      { nome: "COMBUSTIVEL", icone: "⛽", teto: 400.0, cor: "#f59e0b" },
+      { nome: "PLANO DE SAUDE", icone: "🩺", teto: 500.0, cor: "#ef4444" },
+      { nome: "CONTA DE LUZ", icone: "💡", teto: 110.0, cor: "#eab308" },
+      { nome: "CONTA DE AGUA", icone: "🚰", teto: 70.0, cor: "#0ea5e9" },
+      { nome: "CONTA DE INTERNET", icone: "🌐", teto: 110.0, cor: "#6366f1" },
+      { nome: "SEGURO MOTO/CARRO", icone: "🛡️", teto: 40.0, cor: "#ec4899" },
+      { nome: "CONTA TELEFONE", icone: "📱", teto: 30.0, cor: "#8b5cf6" },
+      { nome: "OUTROS GASTOS", icone: "📦", teto: 300.0, cor: "#64748b" }
+    ];
 
+    let METAS = carregarMetasLocais();
+    let lancamentos = carregarLancamentosLocais();
+    let historicoMeses = carregarHistoricoLocal();
+    let formaSelecionada = "PIX";
+    let filtroAtual = "TODOS";
+    let gravando = false;
+    let recognition = null;
     let deferredPrompt = null;
+
+    // PWA Install prompt listener
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      const b = document.getElementById('banner-instalar');
-      if (b) b.classList.remove('hidden');
+      const banner = document.getElementById('banner-instalar');
+      if (banner) banner.style.display = 'flex';
     });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
 
     function acionarInstalacaoApp() {
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            document.getElementById('banner-instalar').classList.add('hidden');
-          }
-          deferredPrompt = null;
-        });
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
       } else {
-        document.getElementById('modal-instrucoes-app').classList.remove('hidden');
+        alert("Para instalar:\n• No Android/Chrome: Toque nos 3 pontinhos e 'Instalar aplicativo' ou 'Adicionar à tela inicial'.\n• No iPhone/Safari: Toque em Compartilhar e 'Adicionar à Tela de Início'.");
       }
     }
 
-    function fecharModalInstrucoes() {
-      document.getElementById('modal-instrucoes-app').classList.add('hidden');
-    }
-
-    let API_BASE = "https://grant-forms-hotels-december.trycloudflare.com/api/lancamentos";
-    if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168.")) {
-      API_BASE = window.location.origin + "/api/lancamentos";
-    }
-
-    async function descobrirEndpointAtivo() {
-      try {
-        const r = await fetch("./config_api.json?t=" + Date.now(), { cache: "no-store" });
-        if (r.ok) {
-          const cfg = await r.json();
-          if (cfg.api_url && !window.location.hostname.startsWith("192.168.") && window.location.hostname !== "127.0.0.1") {
-            API_BASE = cfg.api_url;
-          }
-        }
-      } catch (e) {}
-    }
-
-    // Tetos e Categorias Atualizadas: Sem Educação, Com Poupança e Gastos no Cartão
-    const TETOS_CATEGORIAS = {
-      "Aluguel/Parcelas do Imóvel": { teto: 1535.00, icone: "🏠", cor: "#3b82f6" },
-      "Parcelamento do Carro": { teto: 1413.00, icone: "🚘", cor: "#06b6d4" },
-      "Supermercado": { teto: 850.00, icone: "🛒", cor: "#10b981" },
-      "Gastos no Cartão": { teto: 2700.00, icone: "💳", cor: "#8b5cf6" },
-      "Poupança": { teto: 500.00, icone: "🏦", cor: "#ec4899" },
-      "Investimentos / Reserva": { teto: 1000.00, icone: "📈", cor: "#f59e0b" },
-      "Alimentação / Comer Fora": { teto: 300.00, icone: "🍽️", cor: "#14b8a6" },
-      "Combustível": { teto: 400.00, icone: "⛽", cor: "#f97316" },
-      "Plano de Saúde": { teto: 500.00, icone: "🏥", cor: "#ef4444" },
-      "Conta de Luz": { teto: 110.00, icone: "💡", cor: "#eab308" },
-      "Internet": { teto: 110.00, icone: "🌐", cor: "#6366f1" },
-      "Conta de Água": { teto: 70.00, icone: "💧", cor: "#0ea5e9" },
-      "Reparos / Manutenção": { teto: 70.00, icone: "🔧", cor: "#64748b" },
-      "Seguro do Carro+MOTO": { teto: 40.00, icone: "🛡️", cor: "#a855f7" },
-      "Telefone": { teto: 30.00, icone: "📱", cor: "#38bdf8" },
-      "Netflix + Crunchyroll / Streamings": { teto: 80.00, icone: "🎬", cor: "#d946ef" },
-      "Passeios / Lazer": { teto: 150.00, icone: "🎉", cor: "#f43f5e" },
-      "Farmácia / Consultas": { teto: 100.00, icone: "💊", cor: "#fb7185" },
-      "Ônibus/Táxi/Uber": { teto: 80.00, icone: "🚗", cor: "#2dd4bf" },
-      "Suprimentos Pessoais": { teto: 100.00, icone: "🧴", cor: "#a3e635" },
-      "Roupas": { teto: 100.00, icone: "👕", cor: "#c084fc" },
-      "Outros Gastos": { teto: 300.00, icone: "📦", cor: "#94a3b8" }
-    };
-
-    // Gastos iniciam ZERADOS! Apenas as entradas de receita registradas
-    const DADOS_INICIAIS_ZERADOS = [
-      { id: 2, data: new Date().toLocaleDateString("pt-BR"), tipo: "Receita", categoria: "Vale Alimentação (Recarga)", descricao: "Recarga Vale Alimentação", formaPagamento: "Vale Alimentação", valor: 690.00 },
-      { id: 1, data: new Date().toLocaleDateString("pt-BR"), tipo: "Receita", categoria: "Salário", descricao: "Salário Base Mensal", formaPagamento: "PIX", valor: 10000.00 }
-    ];
-
-    let lancamentos = JSON.parse(localStorage.getItem("vozfin_lancamentos_v2")) || DADOS_INICIAIS_ZERADOS;
-    let filaPendentes = JSON.parse(localStorage.getItem("vozfin_fila_v2")) || [];
-    let formaSelecionada = "PIX";
-    let filtroAtual = "TODOS";
-    let reconhecimento = null;
-    let gravando = false;
-
-    function formatarBRL(valor) {
-      return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    }
-
-    async function sincronizarAgora() {
-      await descobrirEndpointAtivo();
-      try {
-        if (filaPendentes.length > 0) {
-          for (const item of [...filaPendentes]) {
-            const rPost = await fetch(API_BASE, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(item)
-            });
-            if (rPost.ok) {
-              filaPendentes = filaPendentes.filter(p => p.id !== item.id);
-              localStorage.setItem("vozfin_fila_v2", JSON.stringify(filaPendentes));
-            }
-          }
-        }
-
-        const resp = await fetch(API_BASE, { cache: "no-store" });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.status === "ok" && Array.isArray(data.lancamentos)) {
-            lancamentos = data.lancamentos;
-            localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
-            document.getElementById("sheet-badge").innerText = "Sincronizado com Sheets ✓";
-            renderizarTudo();
-          }
-        }
-      } catch (e) {
-        if (filaPendentes.length > 0) {
-          document.getElementById("sheet-badge").innerText = `Salvo no Celular (${filaPendentes.length} pendente)`;
-        }
+    function carregarMetasLocais() {
+      const salvas = localStorage.getItem("vozfin_metas_12");
+      if (salvas) {
+        try {
+          const dict = JSON.parse(salvas);
+          return CATEGORIAS_PADRAO.map(c => ({
+            ...c,
+            teto: dict[c.nome] !== undefined ? parseFloat(dict[c.nome]) : c.teto
+          }));
+        } catch(e) {}
       }
+      return JSON.parse(JSON.stringify(CATEGORIAS_PADRAO));
     }
 
-    function selecionarPgto(forma) {
-      formaSelecionada = forma;
-      document.querySelectorAll(".chip-pgto").forEach(btn => {
-        if (btn.getAttribute("data-pgto") === forma) {
-          btn.classList.add("selected");
-        } else {
-          btn.classList.remove("selected");
-        }
+    function carregarLancamentosLocais() {
+      const dados = localStorage.getItem("vozfin_lancamentos_v2");
+      if (dados) {
+        try { return JSON.parse(dados); } catch(e) {}
+      }
+      return []; // Totalmente zerado
+    }
+
+    function carregarHistoricoLocal() {
+      const dados = localStorage.getItem("vozfin_historico_meses");
+      if (dados) {
+        try { return JSON.parse(dados); } catch(e) {}
+      }
+      return [];
+    }
+
+    function formatarMoeda(val) {
+      return (Number(val) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function mudarAba(aba) {
+      ["pizza", "tetos", "extrato", "meses"].forEach(a => {
+        const el = document.getElementById(`aba-${a}`);
+        const btn = document.getElementById(`tab-btn-${a}`);
+        if (el) el.classList.toggle("hidden", a !== aba);
+        if (btn) btn.classList.toggle("active", a !== aba);
       });
-      atualizarAlertaPreview();
+      if (aba === "pizza") renderizarGraficoPizza();
+      if (aba === "meses") atualizarAbaMesesAnteriores();
     }
 
+    function selecionarForma(forma) {
+      formaSelecionada = forma;
+      const mapa = {
+        "PIX": "btn-f-pix",
+        "Cartão de Crédito": "btn-f-cred",
+        "Cartão de Débito": "btn-f-deb",
+        "Vale Alimentação": "btn-f-va"
+      };
+      Object.entries(mapa).forEach(([f, id]) => {
+        const b = document.getElementById(id);
+        if (b) b.classList.toggle("selected", f === forma);
+      });
+    }
+
+    // INTERPRETADOR INTELIGENTE POR VOZ
     function interpretarFrase(texto) {
       if (!texto || !texto.trim()) return;
-      const t = texto.toLowerCase().trim();
+      const t = texto.toLowerCase();
 
-      let valorEncontrado = null;
-      const regexDecimalFalado = /(\d+)\s*(?:reais\s*)?e\s*(\d{1,2})\b/i;
-      const matchFalado = t.match(regexDecimalFalado);
-      if (matchFalado) {
-        const centavos = matchFalado[2].length === 1 ? matchFalado[2] + "0" : matchFalado[2];
-        valorEncontrado = parseFloat(matchFalado[1] + "." + centavos);
-      } else {
-        const matchNum = t.match(/(\d+(?:[.,]\d{1,2})?)/);
-        if (matchNum) {
-          valorEncontrado = parseFloat(matchNum[1].replace(",", "."));
+      // 1. Detectar Valor
+      const matchValor = t.match(/(\d+[\d\.,]*)/);
+      if (matchValor) {
+        let vStr = matchValor[1].replace(/\./g, "").replace(",", ".");
+        const vNum = parseFloat(vStr);
+        if (!isNaN(vNum)) {
+          document.getElementById("campo-valor").value = vNum.toFixed(2);
         }
       }
-      if (valorEncontrado !== null && !isNaN(valorEncontrado)) {
-        document.getElementById("campo-valor").value = valorEncontrado.toFixed(2);
-      }
 
-      if (t.includes("vale") || (t.includes("alimentação") && (t.includes("no ") || t.includes("cartão") || t.includes("va")))) {
-        selecionarPgto("Vale Alimentação");
-      } else if (t.includes("crédito") || t.includes("credito")) {
-        selecionarPgto("Cartão de Crédito");
-      } else if (t.includes("débito") || t.includes("debito")) {
-        selecionarPgto("Cartão de Débito");
-      } else if (t.includes("pix")) {
-        selecionarPgto("PIX");
-      }
-
-      if (t.includes("recebi") || t.includes("salário") || t.includes("salario") || t.includes("renda extra") || t.includes("entrou") || t.includes("reembolso")) {
+      // 2. Detectar Receitas (Salário ou Vale Alimentação)
+      if (t.includes("salário") || t.includes("salario")) {
         document.getElementById("campo-tipo").value = "Receita";
-      } else {
-        document.getElementById("campo-tipo").value = "Despesa";
+        document.getElementById("campo-categoria").value = "Salário";
+        document.getElementById("campo-desc").value = "Salário Recebido";
+        selecionarForma("PIX");
+        atualizarAlertaPreview();
+        return;
+      }
+      if (t.includes("vale alimentação") || t.includes("vale alimentacao") || t.includes("recarga vale") || t.includes("vale refeição")) {
+        document.getElementById("campo-tipo").value = "Receita";
+        document.getElementById("campo-categoria").value = "Vale Alimentação";
+        document.getElementById("campo-desc").value = "Recarga Vale Alimentação";
+        selecionarForma("Vale Alimentação");
+        atualizarAlertaPreview();
+        return;
       }
 
-      const mapaCategorias = [
-        { cat: "Poupança", termos: ["poupança", "poupanca", "guardei", "guardar"] },
-        { cat: "Gastos no Cartão", termos: ["cartão", "cartao", "fatura", "acordo", "dívida", "divida"] },
-        { cat: "Combustível", termos: ["combustível", "combustivel", "gasolina", "etanol", "álcool", "alcool", "posto", "abasteci", "diesel"] },
-        { cat: "Supermercado", termos: ["supermercado", "mercado", "feira", "atacadão", "atacadao", "assai", "assaí", "compras do mês", "açougue"] },
-        { cat: "Alimentação / Comer Fora", termos: ["almoço", "almoco", "jantar", "lanche", "padaria", "restaurante", "ifood", "pizza", "hambúrguer", "comer", "café", "alimentação", "alimentacao"] },
-        { cat: "Ônibus/Táxi/Uber", termos: ["uber", "99", "táxi", "taxi", "ônibus", "onibus", "passagem", "metrô"] },
-        { cat: "Reparos / Manutenção", termos: ["oficina", "mecânico", "mecanico", "pneu", "óleo", "oleo", "reparo", "manutenção", "manutencao"] },
-        { cat: "Conta de Luz", termos: ["luz", "energia", "celpe", "neoenergia", "enel"] },
-        { cat: "Conta de Água", termos: ["água", "agua", "compesa", "cagece", "saneamento"] },
-        { cat: "Internet", termos: ["internet", "fibra", "wi-fi", "wifi"] },
-        { cat: "Telefone", termos: ["telefone", "celular", "tim", "vivo", "claro", "recarga"] },
-        { cat: "Aluguel/Parcelas do Imóvel", termos: ["aluguel", "imóvel", "imovel", "condomínio", "condominio"] },
-        { cat: "Parcelamento do Carro", termos: ["parcela do carro", "financiamento do carro"] },
-        { cat: "Seguro do Carro+MOTO", termos: ["seguro"] },
-        { cat: "Farmácia / Consultas", termos: ["farmácia", "farmacia", "remédio", "remedio", "médico", "medico", "consulta", "exame", "dentista"] },
-        { cat: "Plano de Saúde", termos: ["plano de saúde", "plano de saude", "unimed", "hapvida"] },
-        { cat: "Roupas", termos: ["roupa", "roupas", "camisa", "calça", "tênis", "sapato"] },
-        { cat: "Suprimentos Pessoais", termos: ["barbeiro", "cabelo", "perfume", "higiene", "suprimentos"] },
-        { cat: "Netflix + Crunchyroll / Streamings", termos: ["netflix", "crunchyroll", "spotify", "streaming", "assinatura"] },
-        { cat: "Passeios / Lazer", termos: ["passeio", "cinema", "lazer", "bar", "viagem", "show", "ingresso"] },
-        { cat: "Investimentos / Reserva", termos: ["investimento", "investi", "reserva", "tesouro", "cdb", "cripto"] },
-        { cat: "Renda extra", termos: ["renda extra", "freela", "bico", "comissão"] },
-        { cat: "Salário", termos: ["salário", "salario", "pagamento mensal"] }
-      ];
+      // 3. Caso contrário, é Despesa
+      document.getElementById("campo-tipo").value = "Despesa";
 
-      for (const item of mapaCategorias) {
-        if (item.termos.some(termo => t.includes(termo))) {
-          document.getElementById("campo-categoria").value = item.cat;
-          break;
-        }
+      // 4. Mapear Formas de Pagamento
+      if (t.includes("crédito") || t.includes("credito") || t.includes("cartão de crédito") || t.includes("cartao de credito")) {
+        selecionarForma("Cartão de Crédito");
+      } else if (t.includes("débito") || t.includes("debito") || t.includes("cartão de débito") || t.includes("cartao de debito")) {
+        selecionarForma("Cartão de Débito");
+      } else if (t.includes("vale") || t.includes("alimentação") || t.includes("refeição")) {
+        selecionarForma("Vale Alimentação");
+      } else if (t.includes("pix") || t.includes("transferência")) {
+        selecionarForma("PIX");
       }
 
-      document.getElementById("campo-descricao").value = texto.charAt(0).toUpperCase() + texto.slice(1);
+      // 5. Mapear as 12 Categorias Exatas
+      let catDetectada = "OUTROS GASTOS";
+      let descSugerida = texto;
+
+      if (t.includes("aluguel") || t.includes("imobiliaria") || t.includes("condomínio") || t.includes("condominio")) {
+        catDetectada = "ALUGUEL";
+        descSugerida = "Aluguel Mensal";
+      } else if (t.includes("parcela carro") || t.includes("parcela do carro") || t.includes("prestação do carro") || t.includes("prestacao carro") || t.includes("financiamento")) {
+        catDetectada = "PARCELA CARRO";
+        descSugerida = "Parcela do Carro";
+      } else if (t.includes("cartão") || t.includes("cartao") || t.includes("fatura") || t.includes("nubank") || t.includes("itau")) {
+        catDetectada = "CARTÃO";
+        descSugerida = "Gastos / Fatura no Cartão";
+      } else if (t.includes("poupança") || t.includes("poupanca") || t.includes("guardar") || t.includes("reserva") || t.includes("investir")) {
+        catDetectada = "POUPANÇA";
+        descSugerida = "Aplicação em Poupança / Reserva";
+      } else if (t.includes("combustível") || t.includes("combustivel") || t.includes("gasolina") || t.includes("etanol") || t.includes("diesel") || t.includes("posto") || t.includes("abastecer")) {
+        catDetectada = "COMBUSTIVEL";
+        descSugerida = "Combustível";
+      } else if (t.includes("plano de saúde") || t.includes("plano de saude") || t.includes("unimed") || t.includes("hapvida") || t.includes("médico") || t.includes("saúde")) {
+        catDetectada = "PLANO DE SAUDE";
+        descSugerida = "Plano de Saúde";
+      } else if (t.includes("luz") || t.includes("energia") || t.includes("enel") || t.includes("celpe") || t.includes("neoenergia")) {
+        catDetectada = "CONTA DE LUZ";
+        descSugerida = "Conta de Luz";
+      } else if (t.includes("água") || t.includes("agua") || t.includes("compesa") || t.includes("cagece") || t.includes("sabesp") || t.includes("saneamento")) {
+        catDetectada = "CONTA DE AGUA";
+        descSugerida = "Conta de Água";
+      } else if (t.includes("internet") || t.includes("wifi") || t.includes("banda larga") || t.includes("fibra")) {
+        catDetectada = "CONTA DE INTERNET";
+        descSugerida = "Conta de Internet";
+      } else if (t.includes("seguro") || t.includes("seguro moto") || t.includes("seguro carro") || t.includes("porto seguro")) {
+        catDetectada = "SEGURO MOTO/CARRO";
+        descSugerida = "Seguro Moto / Carro";
+      } else if (t.includes("telefone") || t.includes("celular") || t.includes("vivo") || t.includes("claro") || t.includes("tim")) {
+        catDetectada = "CONTA TELEFONE";
+        descSugerida = "Conta de Telefone / Celular";
+      }
+
+      document.getElementById("campo-categoria").value = catDetectada;
+      document.getElementById("campo-desc").value = descSugerida;
       atualizarAlertaPreview();
+    }
+
+    function atualizarAlertaPreview() {
+      const tipo = document.getElementById("campo-tipo").value;
+      const catNome = document.getElementById("campo-categoria").value;
+      const val = parseFloat(document.getElementById("campo-valor").value) || 0;
+      const alerta = document.getElementById("alerta-teto-preview");
+      const texto = document.getElementById("alerta-teto-texto");
+      const pctEl = document.getElementById("alerta-teto-pct");
+
+      if (tipo === "Receita") {
+        alerta.className = "text-xs p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between";
+        texto.innerText = `📈 Entrada: Adicionará ${formatarMoeda(val)} ao seu saldo livre!`;
+        pctEl.innerText = "+Receita";
+        return;
+      }
+
+      const meta = METAS.find(m => m.nome === catNome);
+      if (!meta) {
+        alerta.className = "text-xs p-2 rounded-lg bg-slate-800 text-[var(--muted-foreground)] flex items-center justify-between";
+        texto.innerText = "Pronto para registrar despesa.";
+        pctEl.innerText = "";
+        return;
+      }
+
+      const gastoAtual = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === catNome).reduce((a, b) => a + b.valor, 0);
+      const novoTotal = gastoAtual + val;
+      const pct = meta.teto > 0 ? (novoTotal / meta.teto) * 100 : 0;
+
+      pctEl.innerText = `${pct.toFixed(0)}%`;
+      if (pct > 100) {
+        alerta.className = "text-xs p-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-between";
+        texto.innerText = `⚠️ Teto de ${formatarMoeda(meta.teto)} será estourado em ${formatarMoeda(novoTotal - meta.teto)}!`;
+      } else if (pct >= 75) {
+        alerta.className = "text-xs p-2 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center justify-between";
+        texto.innerText = `⚡ Atenção: Atingirá ${pct.toFixed(0)}% do teto (${formatarMoeda(novoTotal)} de ${formatarMoeda(meta.teto)})`;
+      } else {
+        alerta.className = "text-xs p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-between";
+        texto.innerText = `✓ Dentro da meta: Sobrarão ${formatarMoeda(meta.teto - novoTotal)}`;
+      }
     }
 
     function simularFala(frase) {
       document.getElementById("input-frase-voz").value = frase;
       interpretarFrase(frase);
-    }
-
-    function atualizarAlertaPreview() {
-      const box = document.getElementById("alerta-impacto-teto");
-      const tipo = document.getElementById("campo-tipo").value;
-      const cat = document.getElementById("campo-categoria").value;
-      const val = parseFloat(document.getElementById("campo-valor").value) || 0;
-
-      if (tipo === "Despesa" && TETOS_CATEGORIAS[cat] && val > 0) {
-        const teto = TETOS_CATEGORIAS[cat].teto;
-        const gastoAtual = lancamentos
-          .filter(l => l.tipo === "Despesa" && l.categoria === cat)
-          .reduce((acc, cur) => acc + Number(cur.valor), 0);
-        const novoTotal = gastoAtual + val;
-        const pct = teto > 0 ? (novoTotal / teto) * 100 : 0;
-        const restante = teto - novoTotal;
-
-        box.classList.remove("hidden", "bg-emerald-500/10", "text-emerald-500", "border-emerald-500/20", "bg-amber-500/10", "text-amber-500", "border-amber-500/20", "bg-rose-500/10", "text-rose-500", "border-rose-500/20");
-
-        if (pct >= 100) {
-          box.classList.add("bg-rose-500/10", "text-rose-500", "border-rose-500/20");
-          box.innerHTML = `⚠️ <strong>Alerta de Teto:</strong> Com este gasto de ${formatarBRL(val)}, a categoria <strong>${cat}</strong> chegará a <strong>${pct.toFixed(0)}%</strong> da meta (${formatarBRL(Math.abs(restante))} acima do teto de ${formatarBRL(teto)}).`;
-        } else if (pct >= 75) {
-          box.classList.add("bg-amber-500/10", "text-amber-500", "border-amber-500/20");
-          box.innerHTML = `⚡ <strong>Atenção à Meta:</strong> A categoria <strong>${cat}</strong> atingirá <strong>${pct.toFixed(0)}%</strong> do teto mensal. Restarão ${formatarBRL(restante)}.`;
-        } else {
-          box.classList.add("bg-emerald-500/10", "text-emerald-500", "border-emerald-500/20");
-          box.innerHTML = `✓ <strong>Dentro da Meta:</strong> A categoria <strong>${cat}</strong> ficará em <strong>${pct.toFixed(0)}%</strong> do teto (${formatarBRL(restante)} livres de ${formatarBRL(teto)}).`;
-        }
-      } else {
-        box.classList.add("hidden");
+      const auto = document.getElementById("chk-autosave").checked;
+      if (auto) {
+        salvarLancamento();
       }
     }
 
     function alternarGravacaoVoz() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("O reconhecimento por voz contínuo não é suportado neste navegador. Você pode digitar ou usar os botões rápidos!");
+        return;
+      }
+
       const btn = document.getElementById("btn-mic");
       const lbl = document.getElementById("mic-label");
 
-      if (!SpeechRecognition) {
-        alert("Use o microfone do teclado do celular no campo abaixo!");
-        document.getElementById("input-frase-voz").focus();
-        return;
-      }
-
-      if (gravando && reconhecimento) {
-        reconhecimento.stop();
-        return;
-      }
-
-      reconhecimento = new SpeechRecognition();
-      reconhecimento.lang = "pt-BR";
-      reconhecimento.interimResults = true;
-      reconhecimento.maxAlternatives = 1;
-
-      reconhecimento.onstart = () => {
-        gravando = true;
-        btn.classList.add("mic-recording");
-        lbl.innerText = "Ouvindo... Fale agora";
-      };
-
-      reconhecimento.onresult = (event) => {
-        const transcricao = Array.from(event.results)
-          .map(r => r[0].transcript)
-          .join("");
-        document.getElementById("input-frase-voz").value = transcricao;
-        interpretarFrase(transcricao);
-      };
-
-      reconhecimento.onend = () => {
+      if (gravando) {
+        if (recognition) recognition.stop();
         gravando = false;
         btn.classList.remove("mic-recording");
         lbl.innerText = "Falar Agora";
-        const autoSave = document.getElementById("chk-autosave").checked;
-        const val = parseFloat(document.getElementById("campo-valor").value);
-        if (autoSave && val > 0) {
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = "pt-BR";
+      recognition.interimResults = false;
+      recognition.continuous = false;
+
+      recognition.onstart = () => {
+        gravando = true;
+        btn.classList.add("mic-recording");
+        lbl.innerText = "Ouvindo...";
+      };
+
+      recognition.onresult = (e) => {
+        const frase = e.results[0][0].transcript;
+        document.getElementById("input-frase-voz").value = frase;
+        interpretarFrase(frase);
+        if (document.getElementById("chk-autosave").checked) {
           salvarLancamento();
         }
       };
 
-      reconhecimento.onerror = () => {
+      recognition.onerror = () => {
         gravando = false;
         btn.classList.remove("mic-recording");
         lbl.innerText = "Falar Agora";
       };
 
-      reconhecimento.start();
+      recognition.onend = () => {
+        gravando = false;
+        btn.classList.remove("mic-recording");
+        lbl.innerText = "Falar Agora";
+      };
+
+      recognition.start();
     }
 
-    async function salvarLancamento() {
-      const valor = parseFloat(document.getElementById("campo-valor").value);
-      if (!valor || valor <= 0) {
-        alert("Fale ou digite um valor maior que zero.");
+    function salvarLancamento() {
+      const tipo = document.getElementById("campo-tipo").value;
+      const valor = parseFloat(document.getElementById("campo-valor").value) || 0;
+      const categoria = document.getElementById("campo-categoria").value;
+      const descricao = document.getElementById("campo-desc").value || categoria;
+
+      if (valor <= 0) {
+        alert("Por favor informe um valor maior que zero.");
         return;
       }
 
-      const tipo = document.getElementById("campo-tipo").value;
-      const categoria = document.getElementById("campo-categoria").value;
-      const descricao = document.getElementById("campo-descricao").value.trim() || categoria;
       const agora = new Date();
-      const dataStr = agora.toLocaleDateString("pt-BR");
-
-      const novoItem = {
+      const novo = {
         id: Date.now(),
-        data: dataStr,
+        data: agora.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }),
+        mesAno: `${(agora.getMonth() + 1).toString().padStart(2, '0')}/${agora.getFullYear()}`,
         tipo: tipo,
         categoria: categoria,
         descricao: descricao,
@@ -745,300 +789,535 @@
         origem: "Voz Mobile"
       };
 
-      document.getElementById("input-frase-voz").value = "";
-      document.getElementById("campo-valor").value = "";
-      document.getElementById("campo-descricao").value = "";
-      document.getElementById("alerta-impacto-teto").classList.add("hidden");
+      lancamentos.unshift(novo);
+      localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
 
-      try {
-        document.getElementById("sheet-badge").innerText = "Gravando na Planilha...";
-        const resp = await fetch(API_BASE, {
+      // Limpa inputs
+      document.getElementById("campo-valor").value = "";
+      document.getElementById("campo-desc").value = "";
+      document.getElementById("input-frase-voz").value = "";
+
+      // Atualiza interface
+      atualizarKPIs();
+      renderizarTetos();
+      renderizarExtrato();
+      renderizarGraficoPizza();
+      atualizarAlertaPreview();
+
+      // Envia ao backend local para salvar no Excel se disponível
+      enviarAoBackend(novo);
+    }
+
+    function enviarAoBackend(item) {
+      const urls = [
+        "https://grant-forms-hotels-december.trycloudflare.com/api/lancamentos",
+        "http://127.0.0.1:8090/api/lancamentos"
+      ];
+      urls.forEach(url => {
+        fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(novoItem)
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.lancamentos) {
-            lancamentos = data.lancamentos;
-          } else {
-            lancamentos.unshift(novoItem);
-          }
-          localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
-          document.getElementById("sheet-badge").innerText = "Salvo na Planilha Google ✓";
-        } else {
-          throw new Error("Offline");
-        }
-      } catch (e) {
-        lancamentos.unshift(novoItem);
-        filaPendentes.push(novoItem);
-        localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
-        localStorage.setItem("vozfin_fila_v2", JSON.stringify(filaPendentes));
-        document.getElementById("sheet-badge").innerText = "Salvo (Sincroniza ao conectar)";
-      }
-
-      renderizarTudo();
+          body: JSON.stringify(item)
+        }).catch(() => {});
+      });
     }
 
-    async function excluirLancamento(id) {
+    function excluirLancamento(id) {
+      if (!confirm("Deseja realmente remover este lançamento?")) return;
       lancamentos = lancamentos.filter(l => l.id !== id);
       localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
-      renderizarTudo();
-      try {
-        await fetch(API_BASE + "/" + id, { method: "DELETE" });
-      } catch (e) {}
+      atualizarKPIs();
+      renderizarTetos();
+      renderizarExtrato();
+      renderizarGraficoPizza();
+
+      // Envia exclusão ao backend
+      fetch(`http://127.0.0.1:8090/api/lancamentos/${id}`, { method: "DELETE" }).catch(() => {});
     }
 
-    function renderizarTudo() {
-      let totalReceitas = 0;
-      let totalDespesas = 0;
-      let somaPgto = {
-        "PIX": 0,
-        "Cartão de Crédito": 0,
-        "Cartão de Débito": 0,
-        "Vale Alimentação": 0
+    // BOTÃO DE CORTE DE MÊS
+    function abrirModalCorte() {
+      const agora = new Date();
+      const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      const mesSugerido = `${nomesMeses[agora.getMonth()]}/${agora.getFullYear()}`;
+      document.getElementById("input-corte-mes").value = mesSugerido;
+
+      const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
+      const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
+      const saldo = rec - desp;
+
+      document.getElementById("corte-resumo-rec").innerText = formatarMoeda(rec);
+      document.getElementById("corte-resumo-desp").innerText = formatarMoeda(desp);
+      document.getElementById("corte-resumo-saldo").innerText = formatarMoeda(saldo);
+      document.getElementById("corte-resumo-qtd").innerText = `${lancamentos.length} itens`;
+
+      document.getElementById("modal-corte").classList.remove("hidden");
+    }
+
+    function fecharModalCorte() {
+      document.getElementById("modal-corte").classList.add("hidden");
+    }
+
+    function confirmarCorteMes() {
+      const mesRef = document.getElementById("input-corte-mes").value.trim() || "Mês Fechado";
+      const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
+      const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
+      const saldo = rec - desp;
+
+      const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
+      const cred = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Crédito").reduce((a, b) => a + b.valor, 0);
+      const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
+      const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
+
+      // Snapshot detalhado por categoria
+      const porCategoria = {};
+      METAS.forEach(m => {
+        porCategoria[m.nome] = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
+      });
+
+      const snapshot = {
+        id: Date.now(),
+        mesReferencia: mesRef,
+        dataFechamento: new Date().toLocaleString("pt-BR"),
+        totalReceitas: rec,
+        totalDespesas: desp,
+        saldoFinal: saldo,
+        totalPix: pix,
+        totalCredito: cred,
+        totalDebito: deb,
+        totalVa: va,
+        qtdLancamentos: lancamentos.length,
+        porCategoria: porCategoria,
+        lancamentos: [...lancamentos]
       };
-      let recargaVA = 0;
 
-      lancamentos.forEach(l => {
-        const v = Number(l.valor) || 0;
-        if (l.tipo === "Receita") {
-          totalReceitas += v;
-          if (l.formaPagamento === "Vale Alimentação" || l.categoria.includes("Vale Alimentação")) {
-            recargaVA += v;
-          }
-        } else {
-          totalDespesas += v;
-          if (somaPgto[l.formaPagamento] !== undefined) {
-            somaPgto[l.formaPagamento] += v;
-          }
-        }
-      });
+      historicoMeses.unshift(snapshot);
+      localStorage.setItem("vozfin_historico_meses", JSON.stringify(historicoMeses));
 
-      const receitasConta = totalReceitas - recargaVA;
-      const saidasConta = somaPgto["PIX"] + somaPgto["Cartão de Débito"];
-      const saldoLivreConta = receitasConta - saidasConta;
+      // ZERA TUDO PARA O NOVO MÊS
+      lancamentos = [];
+      localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify([]));
 
-      document.getElementById("kpi-saldo-livre").innerText = formatarBRL(saldoLivreConta);
-      document.getElementById("kpi-receitas").innerText = formatarBRL(totalReceitas);
-      document.getElementById("kpi-despesas").innerText = formatarBRL(totalDespesas);
+      // Envia corte para a planilha via backend
+      fetch("http://127.0.0.1:8090/api/corte", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mes_referencia: mesRef,
+          total_receitas: rec,
+          total_despesas: desp,
+          saldo_final: saldo,
+          total_pix: pix,
+          total_credito: cred,
+          total_debito: deb,
+          total_va: va,
+          qtd_itens: snapshot.qtdLancamentos,
+          observacoes: `Fechamento do mês ${mesRef}`
+        })
+      }).catch(() => {});
 
-      const metaGlobal = Object.values(TETOS_CATEGORIAS).reduce((a, b) => a + b.teto, 0);
-      const pctGlobal = metaGlobal > 0 ? (totalDespesas / metaGlobal) * 100 : 0;
-      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(1)}% de ${formatarBRL(metaGlobal)}`;
-      document.getElementById("kpi-bar-global").style.width = `${Math.min(100, pctGlobal)}%`;
+      fecharModalCorte();
+      atualizarKPIs();
+      renderizarTetos();
+      renderizarExtrato();
+      renderizarGraficoPizza();
+      atualizarAbaMesesAnteriores();
 
-      document.getElementById("val-pix").innerText = formatarBRL(somaPgto["PIX"]);
-      document.getElementById("pct-pix").innerText = totalDespesas > 0 ? `${((somaPgto["PIX"] / totalDespesas) * 100).toFixed(0)}%` : "0%";
-
-      document.getElementById("val-credito").innerText = formatarBRL(somaPgto["Cartão de Crédito"]);
-      document.getElementById("pct-credito").innerText = `${((somaPgto["Cartão de Crédito"] / 2500) * 100).toFixed(0)}%`;
-
-      document.getElementById("val-debito").innerText = formatarBRL(somaPgto["Cartão de Débito"]);
-      document.getElementById("pct-debito").innerText = `${((somaPgto["Cartão de Débito"] / 1500) * 100).toFixed(0)}%`;
-
-      const baseVA = recargaVA > 0 ? recargaVA : 690;
-      const livreVA = baseVA - somaPgto["Vale Alimentação"];
-      document.getElementById("val-va").innerText = formatarBRL(somaPgto["Vale Alimentação"]);
-      document.getElementById("pct-va").innerText = `${((somaPgto["Vale Alimentação"] / baseVA) * 100).toFixed(0)}%`;
-      document.getElementById("sub-va").innerText = `Livre: ${formatarBRL(livreVA)}`;
-
-      // 1. RENDERIZAR GRÁFICO DE PIZZA DINÂMICO
-      document.getElementById("badge-total-pizza").innerText = formatarBRL(totalDespesas);
-      document.getElementById("pie-center-val").innerText = formatarBRL(totalDespesas);
-      renderizarPizza(totalDespesas);
-
-      // 2. RENDERIZAR TETOS & METAS
-      const containerTetos = document.getElementById("lista-tetos");
-      containerTetos.innerHTML = "";
-
-      Object.entries(TETOS_CATEGORIAS).forEach(([catNome, cfg]) => {
-        const gastoCat = lancamentos
-          .filter(l => l.tipo === "Despesa" && l.categoria === catNome)
-          .reduce((acc, cur) => acc + Number(cur.valor), 0);
-        const pct = cfg.teto > 0 ? (gastoCat / cfg.teto) * 100 : 0;
-        const saldoRestante = cfg.teto - gastoCat;
-
-        let corBarra = "bg-emerald-500";
-        let badgeStatus = `<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold">Livre: ${formatarBRL(saldoRestante)}</span>`;
-        if (pct >= 100) {
-          corBarra = "bg-rose-500";
-          badgeStatus = `<span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 font-bold">Estourado em ${formatarBRL(Math.abs(saldoRestante))}</span>`;
-        } else if (pct >= 75) {
-          corBarra = "bg-amber-500";
-          badgeStatus = `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-semibold">Atenção • Resta ${formatarBRL(saldoRestante)}</span>`;
-        }
-
-        const itemHTML = `
-          <div class="bg-[var(--background)] p-3 rounded-xl border border-[var(--border)]">
-            <div class="flex items-center justify-between text-xs mb-1">
-              <span class="font-bold flex items-center gap-1.5"><span style="color: ${cfg.cor}">${cfg.icone}</span> ${catNome}</span>
-              ${badgeStatus}
-            </div>
-            <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)] mb-1.5 font-mono">
-              <span>Gasto: <strong class="text-[var(--foreground)]">${formatarBRL(gastoCat)}</strong> de ${formatarBRL(cfg.teto)}</span>
-              <span>${pct.toFixed(0)}%</span>
-            </div>
-            <div class="w-full bg-[var(--card)] h-2 rounded-full overflow-hidden border border-[var(--border)]">
-              <div class="${corBarra} h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, pct)}%"></div>
-            </div>
-          </div>
-        `;
-        containerTetos.insertAdjacentHTML("beforeend", itemHTML);
-      });
-
-      // 3. RENDERIZAR EXTRATO
-      document.getElementById("count-lanc").innerText = lancamentos.length;
-      const containerExtrato = document.getElementById("lista-extrato");
-      containerExtrato.innerHTML = "";
-
-      const filtrados = filtroAtual === "TODOS"
-        ? lancamentos
-        : lancamentos.filter(l => l.formaPagamento === filtroAtual);
-
-      if (filtrados.length === 0) {
-        containerExtrato.innerHTML = `<div class="p-6 text-center text-xs text-[var(--muted-foreground)]">Nenhum lançamento encontrado.</div>`;
-      } else {
-        filtrados.forEach(l => {
-          const isRec = l.tipo === "Receita";
-          const corValor = isRec ? "text-emerald-500" : "text-rose-500";
-          const sinal = isRec ? "+" : "-";
-          const iconeCat = (TETOS_CATEGORIAS[l.categoria] && TETOS_CATEGORIAS[l.categoria].icone) || (isRec ? "💰" : "💸");
-
-          const rowHTML = `
-            <div class="bg-[var(--background)] p-3 rounded-xl border border-[var(--border)] flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-center text-sm">
-                  ${iconeCat}
-                </div>
-                <div>
-                  <div class="text-xs font-bold">${l.descricao}</div>
-                  <div class="text-xs text-[var(--muted-foreground)]">
-                    ${l.categoria} • <span class="font-semibold text-sky-400">${l.formaPagamento}</span> • ${l.data}
-                  </div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold font-mono ${corValor}">${sinal} ${formatarBRL(l.valor)}</span>
-                <button onclick="excluirLancamento(${l.id})" class="text-xs text-[var(--muted-foreground)] hover:text-rose-500 px-1.5 py-0.5 cursor-pointer" title="Excluir">✕</button>
-              </div>
-            </div>
-          `;
-          containerExtrato.insertAdjacentHTML("beforeend", rowHTML);
-        });
-      }
+      alert(`🎉 Mês "${mesRef}" arquivado com sucesso!\n\nTudo foi zerado na planilha e no app para você iniciar o novo mês.`);
+      mudarAba("meses");
     }
 
-    function renderizarPizza(totalDespesas) {
-      const svg = document.getElementById("svg-pie");
-      const legend = document.getElementById("pie-legend");
+    // MODAL DE EDIÇÃO DE METAS
+    function abrirModalEditarMetas() {
+      const container = document.getElementById("campos-edicao-metas");
+      container.innerHTML = METAS.map(m => `
+        <div class="flex items-center justify-between p-2 rounded-xl bg-[var(--background)] border border-[var(--border)]">
+          <div class="flex items-center gap-2">
+            <span class="text-base">${m.icone}</span>
+            <span class="font-bold">${m.nome}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="text-[var(--muted-foreground)]">R$</span>
+            <input type="number" step="10" id="input-meta-${m.nome.replace(/\s+/g, '_')}" value="${m.teto}" class="w-24 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1 text-right font-bold font-mono text-emerald-400" />
+          </div>
+        </div>
+      `).join("");
+      document.getElementById("modal-metas").classList.remove("hidden");
+    }
 
-      const gastosPorCat = {};
-      lancamentos.forEach(l => {
-        if (l.tipo === "Despesa") {
-          gastosPorCat[l.categoria] = (gastosPorCat[l.categoria] || 0) + Number(l.valor);
+    function fecharModalEditarMetas() {
+      document.getElementById("modal-metas").classList.add("hidden");
+    }
+
+    function salvarMetasEditadas() {
+      const dict = {};
+      METAS.forEach(m => {
+        const inp = document.getElementById(`input-meta-${m.nome.replace(/\s+/g, '_')}`);
+        if (inp) {
+          const val = parseFloat(inp.value) || 0;
+          m.teto = val;
+          dict[m.nome] = val;
         }
       });
+      localStorage.setItem("vozfin_metas_12", JSON.stringify(dict));
 
-      const categoriasGastas = Object.entries(gastosPorCat)
-        .sort((a, b) => b[1] - a[1]);
+      // Envia ao backend para atualizar o Excel
+      fetch("http://127.0.0.1:8090/api/metas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dict)
+      }).catch(() => {});
 
-      if (totalDespesas <= 0 || categoriasGastas.length === 0) {
-        svg.innerHTML = `<circle cx="50" cy="50" r="38" fill="transparent" stroke="#334155" stroke-width="16" />`;
-        legend.innerHTML = `
-          <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] text-center text-xs text-[var(--muted-foreground)]">
-            <span class="text-base block mb-1">🎉</span>
-            Todos os gastos estão zerados no momento.<br>Fale ou digite um gasto para montar o gráfico de pizza!
+      fecharModalEditarMetas();
+      atualizarKPIs();
+      renderizarTetos();
+      renderizarGraficoPizza();
+    }
+
+    // ABA 4: HISTÓRICO DE MESES ANTERIORES
+    function atualizarAbaMesesAnteriores() {
+      const select = document.getElementById("select-mes-historico");
+      if (!historicoMeses.length) {
+        select.innerHTML = '<option value="">Nenhum mês arquivado ainda</option>';
+        document.getElementById("conteudo-mes-historico").innerHTML = `
+          <div class="text-center py-8 text-[var(--muted-foreground)] text-xs">
+            Nenhum fechamento de mês realizado ainda.<br>
+            Quando seu mês terminar, clique em <strong class="text-purple-400">"✂️ Fazer Corte de Mês"</strong> no topo para arquivar seus gastos e começar o próximo mês zerado!
           </div>
         `;
         return;
       }
 
-      svg.innerHTML = "";
-      legend.innerHTML = "";
+      select.innerHTML = historicoMeses.map((m, idx) => `
+        <option value="${idx}">${m.mesReferencia} (${m.dataFechamento})</option>
+      `).join("");
 
-      const R = 38;
-      const C = 2 * Math.PI * R; // ~238.76
-      let acumPct = 0;
+      carregarMesHistorico(0);
+    }
 
-      categoriasGastas.forEach(([catNome, valor]) => {
-        const pct = (valor / totalDespesas);
-        const dashLen = pct * C;
-        const dashOffset = -(acumPct * C);
-        acumPct += pct;
+    function carregarMesHistorico(idx) {
+      const item = historicoMeses[idx];
+      if (!item) return;
 
-        const cfg = TETOS_CATEGORIAS[catNome] || { cor: "#94a3b8", icone: "📦" };
-
-        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        circle.setAttribute("cx", "50");
-        circle.setAttribute("cy", "50");
-        circle.setAttribute("r", String(R));
-        circle.setAttribute("fill", "transparent");
-        circle.setAttribute("stroke", cfg.cor);
-        circle.setAttribute("stroke-width", "16");
-        circle.setAttribute("stroke-dasharray", `${dashLen} ${C - dashLen}`);
-        circle.setAttribute("stroke-dashoffset", String(dashOffset));
-        circle.setAttribute("class", "transition-all duration-700");
-        svg.appendChild(circle);
-
-        const itemLeg = `
-          <div class="flex items-center justify-between text-xs py-1 border-b border-[var(--border)] last:border-0">
-            <div class="flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${cfg.cor}"></span>
-              <span class="font-medium">${cfg.icone} ${catNome}</span>
+      const container = document.getElementById("conteudo-mes-historico");
+      container.innerHTML = `
+        <div class="bg-[var(--background)] p-4 rounded-xl border border-[var(--border)] space-y-3">
+          <div class="flex items-center justify-between border-b border-[var(--border)] pb-2">
+            <div>
+              <span class="text-xs text-[var(--muted-foreground)]">Fechamento do Mês:</span>
+              <div class="text-base font-black text-purple-400">${item.mesReferencia}</div>
             </div>
-            <div class="font-mono text-right">
-              <strong>${formatarBRL(valor)}</strong>
-              <span class="text-[11px] text-[var(--muted-foreground)]">(${(pct * 100).toFixed(0)}%)</span>
+            <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 border border-[var(--border)] font-mono text-[var(--muted-foreground)]">
+              ${item.dataFechamento}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-[var(--card)] p-2 rounded-xl border border-[var(--border)]">
+              <span class="text-[10px] text-[var(--muted-foreground)]">Entradas</span>
+              <div class="text-xs sm:text-sm font-bold font-mono text-emerald-400">${formatarMoeda(item.totalReceitas)}</div>
+            </div>
+            <div class="bg-[var(--card)] p-2 rounded-xl border border-[var(--border)]">
+              <span class="text-[10px] text-[var(--muted-foreground)]">Gastos</span>
+              <div class="text-xs sm:text-sm font-bold font-mono text-rose-400">${formatarMoeda(item.totalDespesas)}</div>
+            </div>
+            <div class="bg-[var(--card)] p-2 rounded-xl border border-[var(--border)]">
+              <span class="text-[10px] text-[var(--muted-foreground)]">Saldo Livre</span>
+              <div class="text-xs sm:text-sm font-bold font-mono ${item.saldoFinal >= 0 ? 'text-teal-400' : 'text-rose-400'}">${formatarMoeda(item.saldoFinal)}</div>
             </div>
           </div>
-        `;
-        legend.insertAdjacentHTML("beforeend", itemLeg);
-      });
+
+          <!-- Divisão de Pagamento daquele mês -->
+          <div class="grid grid-cols-4 gap-1.5 text-center text-xs">
+            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+              <span class="text-[10px] text-teal-400 font-bold block">PIX</span>
+              <span class="font-mono text-[11px]">${formatarMoeda(item.totalPix)}</span>
+            </div>
+            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+              <span class="text-[10px] text-purple-400 font-bold block">Crédito</span>
+              <span class="font-mono text-[11px]">${formatarMoeda(item.totalCredito)}</span>
+            </div>
+            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+              <span class="text-[10px] text-sky-400 font-bold block">Débito</span>
+              <span class="font-mono text-[11px]">${formatarMoeda(item.totalDebito)}</span>
+            </div>
+            <div class="p-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+              <span class="text-[10px] text-amber-400 font-bold block">Vale</span>
+              <span class="font-mono text-[11px]">${formatarMoeda(item.totalVa)}</span>
+            </div>
+          </div>
+
+          <!-- Extrato Arquivado do Mês -->
+          <div class="pt-2">
+            <div class="text-xs font-bold mb-2 flex justify-between items-center">
+              <span>Lançamentos Registrados neste Mês (${item.lancamentos ? item.lancamentos.length : 0}):</span>
+              <button onclick="exportarMesCSV(${idx})" class="text-[11px] text-emerald-400 hover:underline">📥 Baixar CSV</button>
+            </div>
+            <div class="space-y-1.5 max-h-60 overflow-y-auto">
+              ${(item.lancamentos || []).map(l => `
+                <div class="p-2 rounded-xl bg-[var(--card)] border border-[var(--border)] flex items-center justify-between text-xs">
+                  <div>
+                    <div class="font-bold">${l.descricao || l.categoria}</div>
+                    <div class="text-[10px] text-[var(--muted-foreground)]">${l.data} • ${l.categoria} • <span class="text-emerald-400 font-semibold">${l.formaPagamento}</span></div>
+                  </div>
+                  <div class="text-right font-mono font-bold ${l.tipo === 'Receita' ? 'text-emerald-400' : 'text-rose-400'}">
+                    ${l.tipo === 'Receita' ? '+' : '-'}${formatarMoeda(l.valor)}
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      `;
     }
 
-    function trocarAba(aba) {
-      document.getElementById("aba-pizza").classList.add("hidden");
-      document.getElementById("aba-tetos").classList.add("hidden");
-      document.getElementById("aba-extrato").classList.add("hidden");
-
-      document.getElementById("tab-btn-pizza").classList.remove("active");
-      document.getElementById("tab-btn-tetos").classList.remove("active");
-      document.getElementById("tab-btn-extrato").classList.remove("active");
-
-      document.getElementById("aba-" + aba).classList.remove("hidden");
-      document.getElementById("tab-btn-" + aba).classList.add("active");
-    }
-
-    function filtrarExtrato(forma) {
-      filtroAtual = forma;
-      renderizarTudo();
-    }
-
-    function abrirModalQR() {
-      document.getElementById("modal-qr").classList.remove("hidden");
-    }
-
-    function fecharModalQR() {
-      document.getElementById("modal-qr").classList.add("hidden");
-    }
-
-    function exportarCSV() {
-      let csv = "\uFEFFID;Data;Tipo;Categoria;Descricao;Forma de Pagamento;Valor\n";
-      lancamentos.forEach(l => {
-        csv += `${l.id};${l.data};${l.tipo};"${l.categoria}";"${l.descricao}";"${l.formaPagamento}";${String(l.valor).replace(".", ",")}\n`;
+    function exportarMesCSV(idx) {
+      const item = historicoMeses[idx];
+      if (!item || !item.lancamentos) return;
+      let csv = "ID;Data;MesAno;Tipo;Categoria;Descricao;FormaPagamento;Valor\n";
+      item.lancamentos.forEach(l => {
+        csv += `${l.id};"${l.data}";"${l.mesAno}";"${l.tipo}";"${l.categoria}";"${l.descricao}";"${l.formaPagamento}";${l.valor.toFixed(2).replace('.', ',')}\n`;
       });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "lancamentos_gastos_voz.csv";
+      a.download = `VozFin_${item.mesReferencia.replace(/[\/\s]/g, '_')}.csv`;
       a.click();
     }
 
-    renderizarTudo();
-    sincronizarAgora();
-    setInterval(sincronizarAgora, 6000);
+    // ATUALIZAÇÃO DOS KPIS E CARDS PRINCIPAIS
+    function atualizarKPIs() {
+      const rec = lancamentos.filter(l => l.tipo === "Receita").reduce((a, b) => a + b.valor, 0);
+      const desp = lancamentos.filter(l => l.tipo === "Despesa").reduce((a, b) => a + b.valor, 0);
+
+      const pix = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "PIX").reduce((a, b) => a + b.valor, 0);
+      const cred = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Crédito").reduce((a, b) => a + b.valor, 0);
+      const deb = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Cartão de Débito").reduce((a, b) => a + b.valor, 0);
+      const va = lancamentos.filter(l => l.tipo === "Despesa" && l.formaPagamento === "Vale Alimentação").reduce((a, b) => a + b.valor, 0);
+
+      // Saldo Livre = Dinheiro que entrou (Receitas em conta) - Saídas imediatas da conta (PIX e Débito)
+      const saldoLivre = rec - (pix + deb);
+
+      document.getElementById("kpi-saldo-livre").innerText = formatarMoeda(saldoLivre);
+      document.getElementById("kpi-receitas").innerText = formatarMoeda(rec);
+      document.getElementById("kpi-despesas").innerText = formatarMoeda(desp);
+
+      const tetoTotal = METAS.reduce((a, b) => a + b.teto, 0);
+      const pctGlobal = tetoTotal > 0 ? (desp / tetoTotal) * 100 : 0;
+      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(1)}% de ${formatarMoeda(tetoTotal)}`;
+      document.getElementById("kpi-bar-global").style.width = `${Math.min(pctGlobal, 100)}%`;
+      document.getElementById("kpi-bar-global").className = pctGlobal > 100 ? "bg-rose-500 h-full rounded-full transition-all" : (pctGlobal >= 75 ? "bg-amber-500 h-full rounded-full transition-all" : "bg-emerald-500 h-full rounded-full transition-all");
+
+      // Formas de Pagamento
+      document.getElementById("val-pix").innerText = formatarMoeda(pix);
+      document.getElementById("pct-pix").innerText = `${((pix / 7500) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-credito").innerText = formatarMoeda(cred);
+      document.getElementById("pct-credito").innerText = `${((cred / 2500) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-debito").innerText = formatarMoeda(deb);
+      document.getElementById("pct-debito").innerText = `${((deb / 1500) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-va").innerText = formatarMoeda(va);
+      document.getElementById("pct-va").innerText = `${((va / 690) * 100).toFixed(0)}%`;
+
+      document.getElementById("count-lanc").innerText = lancamentos.length;
+    }
+
+    // RENDERIZAÇÃO DAS 12 METAS COM BARRA DE PROGRESSO
+    function renderizarTetos() {
+      const container = document.getElementById("lista-tetos");
+      container.innerHTML = METAS.map(m => {
+        const gasto = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
+        const restante = m.teto - gasto;
+        const pct = m.teto > 0 ? (gasto / m.teto) * 100 : 0;
+
+        let corBar = "bg-emerald-500";
+        let statusBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-mono">Sobra ${formatarMoeda(restante)}</span>`;
+        if (pct > 100) {
+          corBar = "bg-rose-500";
+          statusBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 font-mono font-bold">Estourou +${formatarMoeda(Math.abs(restante))}</span>`;
+        } else if (pct >= 75) {
+          corBar = "bg-amber-500";
+          statusBadge = `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold">Alerta: ${pct.toFixed(0)}%</span>`;
+        }
+
+        return `
+          <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-base">${m.icone}</span>
+                <span class="font-bold text-xs">${m.nome}</span>
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+              <span>Gasto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(gasto)}</strong></span>
+              <span>Teto: <strong class="text-[var(--foreground)] font-mono">${formatarMoeda(m.teto)}</strong></span>
+            </div>
+            <div class="w-full bg-[var(--card)] h-2 rounded-full overflow-hidden border border-[var(--border)]">
+              <div class="${corBar} h-full rounded-full transition-all" style="width: ${Math.min(pct, 100)}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // GRÁFICO DE PIZZA DINÂMICO SVG
+    function renderizarGraficoPizza() {
+      const svg = document.getElementById("svg-pie");
+      const centerVal = document.getElementById("pie-center-val");
+      const badgeTotal = document.getElementById("badge-total-pizza");
+      const legend = document.getElementById("pie-legend");
+
+      const dadosGastos = METAS.map(m => {
+        const val = lancamentos.filter(l => l.tipo === "Despesa" && l.categoria === m.nome).reduce((a, b) => a + b.valor, 0);
+        return { ...m, valor: val };
+      }).filter(d => d.valor > 0);
+
+      const totalGastos = dadosGastos.reduce((a, b) => a + b.valor, 0);
+      centerVal.innerText = formatarMoeda(totalGastos);
+      badgeTotal.innerText = formatarMoeda(totalGastos);
+
+      if (totalGastos === 0) {
+        svg.innerHTML = '<circle cx="50" cy="50" r="40" fill="transparent" stroke="#334155" stroke-width="20" />';
+        legend.innerHTML = `
+          <div class="text-[var(--muted-foreground)] text-xs text-center sm:text-left py-4">
+            Nenhum gasto lançado ainda neste mês. Toque no microfone acima para registrar o primeiro!
+          </div>
+        `;
+        return;
+      }
+
+      const circ = 2 * Math.PI * 40; // ~251.327
+      let acumulado = 0;
+      let svgHtml = "";
+      let legendHtml = "";
+
+      dadosGastos.forEach(d => {
+        const pct = (d.valor / totalGastos);
+        const strokeLength = pct * circ;
+        const strokeDasharray = `${strokeLength} ${circ}`;
+        const strokeDashoffset = -acumulado;
+        acumulado += strokeLength;
+
+        svgHtml += `
+          <circle cx="50" cy="50" r="40" fill="transparent"
+            stroke="${d.cor}" stroke-width="20"
+            stroke-dasharray="${strokeDasharray}"
+            stroke-dashoffset="${strokeDashoffset}"
+            class="transition-all duration-500 hover:opacity-80 cursor-pointer" />
+        `;
+
+        legendHtml += `
+          <div class="flex items-center justify-between py-1 border-b border-[var(--border)] last:border-0">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full" style="background-color: ${d.cor}"></span>
+              <span class="font-bold text-[11px]">${d.icone} ${d.nome}</span>
+            </div>
+            <div class="font-mono text-[11px]">
+              <strong>${formatarMoeda(d.valor)}</strong>
+              <span class="text-[var(--muted-foreground)] ml-1">(${(pct * 100).toFixed(0)}%)</span>
+            </div>
+          </div>
+        `;
+      });
+
+      svg.innerHTML = svgHtml;
+      legend.innerHTML = legendHtml;
+    }
+
+    // RENDERIZAÇÃO DO EXTRATO DE LANÇAMENTOS DO MÊS ATUAL
+    function filtrarExtrato(filtro) {
+      filtroAtual = filtro;
+      renderizarExtrato();
+    }
+
+    function renderizarExtrato() {
+      const container = document.getElementById("lista-extrato");
+      const filtrados = filtroAtual === "TODOS"
+        ? lancamentos
+        : lancamentos.filter(l => l.formaPagamento === filtroAtual);
+
+      if (!filtrados.length) {
+        container.innerHTML = `
+          <div class="text-center py-8 text-[var(--muted-foreground)] text-xs">
+            Nenhum lançamento no extrato para o filtro selecionado.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtrados.map(l => {
+        const isRec = l.tipo === "Receita";
+        return `
+          <div class="p-3 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg ${isRec ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'} flex items-center justify-center font-bold text-xs">
+                ${isRec ? '↗' : '↘'}
+              </div>
+              <div>
+                <div class="font-bold text-xs">${l.descricao || l.categoria}</div>
+                <div class="text-[11px] text-[var(--muted-foreground)]">
+                  ${l.data} • <span class="font-semibold text-teal-400">${l.formaPagamento}</span> • ${l.categoria}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-xs ${isRec ? 'text-emerald-400' : 'text-rose-400'}">
+                ${isRec ? '+' : '-'}${formatarMoeda(l.valor)}
+              </span>
+              <button onclick="excluirLancamento(${l.id})" class="text-xs px-2 py-1 rounded-lg text-rose-400 hover:bg-rose-500/10">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // MODAL QR CODE
+    function abrirModalQR() {
+      document.getElementById("modal-qr").classList.remove("hidden");
+    }
+    function fecharModalQR() {
+      document.getElementById("modal-qr").classList.add("hidden");
+    }
+
+    // SINCRONIZAÇÃO COM BACKEND LOCAL
+    function sincronizarAgora() {
+      const badge = document.getElementById("sheet-badge");
+      badge.innerText = "Sincronizando...";
+      badge.className = "text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 font-medium";
+
+      fetch("http://127.0.0.1:8090/api/lancamentos")
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === "ok" && Array.isArray(data.lancamentos)) {
+            lancamentos = data.lancamentos;
+            localStorage.setItem("vozfin_lancamentos_v2", JSON.stringify(lancamentos));
+            atualizarKPIs();
+            renderizarTetos();
+            renderizarExtrato();
+            renderizarGraficoPizza();
+            badge.innerText = "Planilha Conectada ✓";
+            badge.className = "text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium";
+          }
+        })
+        .catch(() => {
+          badge.innerText = "Modo Local / PWA ✓";
+          badge.className = "text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 border border-slate-600 font-medium";
+        });
+    }
+
+    // INICIALIZAÇÃO
+    window.onload = () => {
+      atualizarKPIs();
+      renderizarTetos();
+      renderizarExtrato();
+      renderizarGraficoPizza();
+      atualizarAbaMesesAnteriores();
+      sincronizarAgora();
+    };
   </script>
 </body>
 </html>
