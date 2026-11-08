@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./manifest.json">
+  <title>VozFin — Controle de Gastos por Voz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --background: #0f172a;
+      --foreground: #f8fafc;
+      --card: #1e293b;
+      --border: #334155;
+      --muted-foreground: #94a3b8;
+      --primary: #059669;
+      --primary-foreground: #ffffff;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 18px rgba(239, 68, 68, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .mic-recording {
+      animation: pulse-ring 1.4s infinite;
+      background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    }
+    .nav-pill.active {
+      background-color: var(--primary);
+      color: var(--primary-foreground);
+    }
+    .chip-pgto.selected {
+      border-color: #10b981;
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen pb-8">
+
+  <div class="max-w-2xl mx-auto p-3 sm:p-5 space-y-4">
+
+    <!-- HEADER DO APP -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-sm">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-base tracking-tight">VozFin Mobile</h1>
+            <span id="sheet-badge" class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-medium">
+              Google Drive Sincronizado ✓
+            </span>
+          </div>
+          <p class="text-xs text-[var(--muted-foreground)]">Conectado à sua planilha CONTROLE FINANCEIRO.xlsx</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button onclick="sincronizarAgora()" class="text-xs px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 font-bold flex items-center gap-1 shadow-xs">
+          <span>🔄</span> <span>Sincronizar</span>
+        </button>
+        <button onclick="exportarCSV()" class="text-xs px-2.5 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:opacity-80 font-medium" title="Exportar CSV">
+          📥
+        </button>
+      </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL: SALDO LIVRE EM CONTA & 4 FORMAS DE PAGAMENTO -->
+    <div class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[var(--border)]">
+        <div>
+          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-500">Saldo Livre em Conta (PIX / Débito)</span>
+          <div class="text-2xl font-black font-mono mt-0.5 text-[var(--foreground)]" id="kpi-saldo-livre">R$ 3.334,00</div>
+          <p class="text-xs text-[var(--muted-foreground)]">
+            Entradas Totais: <strong class="text-emerald-500 font-mono" id="kpi-receitas">R$ 10.690,00</strong> • Gastos: <strong class="text-rose-500 font-mono" id="kpi-despesas">R$ 6.816,00</strong>
+          </p>
+        </div>
+        <div class="bg-[var(--background)] px-3 py-2 rounded-xl border border-[var(--border)] text-right">
+          <span class="text-xs text-[var(--muted-foreground)]">Consumo do Orçamento Total</span>
+          <div class="text-sm font-bold font-mono" id="kpi-meta-global">64,6% de R$ 10.558,00</div>
+          <div class="w-full bg-[var(--card)] h-1.5 rounded-full overflow-hidden mt-1 border border-[var(--border)]">
+            <div id="kpi-bar-global" class="bg-emerald-500 h-full rounded-full transition-all" style="width: 64.6%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Cards das Formas de Pagamento -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <span class="font-semibold text-teal-500">💠 PIX</span>
+            <span id="pct-pix" class="font-mono">89%</span>
+          </div>
+          <div class="text-sm font-bold font-mono mt-1" id="val-pix">R$ 6.666,00</div>
+          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto PIX: R$ 7.500</div>
+        </div>
+
+        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <span class="font-semibold text-purple-400">💳 Crédito</span>
+            <span id="pct-credito" class="font-mono">6%</span>
+          </div>
+          <div class="text-sm font-bold font-mono mt-1" id="val-credito">R$ 150,00</div>
+          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto fatura: R$ 2.500</div>
+        </div>
+
+        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <span class="font-semibold text-sky-400">🏧 Débito</span>
+            <span id="pct-debito" class="font-mono">0%</span>
+          </div>
+          <div class="text-sm font-bold font-mono mt-1" id="val-debito">R$ 0,00</div>
+          <div class="text-xs text-[var(--muted-foreground)] mt-0.5">Teto débito: R$ 1.500</div>
+        </div>
+
+        <div class="bg-[var(--background)] p-2.5 rounded-xl border border-[var(--border)]">
+          <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <span class="font-semibold text-amber-400">🍽️ Vale Alim.</span>
+            <span id="pct-va" class="font-mono">0%</span>
+          </div>
+          <div class="text-sm font-bold font-mono mt-1" id="val-va">R$ 0,00</div>
+          <div class="text-xs text-emerald-500 font-medium mt-0.5" id="sub-va">Livre: R$ 690,00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTRAL DE COMANDO DE VOZ -->
+    <div class="bg-[var(--card)] border-2 border-emerald-500/40 rounded-2xl p-4 shadow-md space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 class="font-bold text-sm flex items-center gap-1.5">
+            <span>🎙️ Lançar por Comando de Voz</span>
+          </h2>
+          <p class="text-xs text-[var(--muted-foreground)]">
+            Fale o gasto, categoria e se foi PIX, Crédito, Débito ou Vale Alimentação
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1.5 text-xs bg-[var(--background)] px-2.5 py-1.5 rounded-xl border border-[var(--border)] cursor-pointer">
+            <input id="chk-autosave" type="checkbox" checked class="accent-emerald-500" />
+            <span>⚡ Salvar automático ao falar</span>
+          </label>
+          <button id="btn-mic" onclick="alternarGravacaoVoz()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+            </svg>
+            <span id="mic-label">Falar Agora</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Frase Falada ou Digitada -->
+      <div class="flex gap-2">
+        <input id="input-frase-voz" type="text" placeholder="Toque em 'Falar Agora' ou digite ex: 45 gasolina no cartão de crédito..."
+          oninput="interpretarFrase(this.value)"
+          class="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)] focus:outline-none focus:border-emerald-500" />
+        <button onclick="salvarLancamento()" class="px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 shrink-0">
+          Lançar
+        </button>
+      </div>
+
+      <!-- Frases de Teste Rápido de 1 Toque -->
+      <div class="flex flex-wrap gap-1.5 items-center">
+        <span class="text-xs text-[var(--muted-foreground)]">Simular voz:</span>
+        <button onclick="simularFala('Gastei 85 reais de gasolina no cartão de crédito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          ⛽ "85 gasolina no crédito"
+        </button>
+        <button onclick="simularFala('Almoço 38 e 50 no vale alimentação')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          🍽️ "Almoço 38,50 no vale"
+        </button>
+        <button onclick="simularFala('Supermercado 195 reais no cartão de débito')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          🛒 "Mercado 195 no débito"
+        </button>
+        <button onclick="simularFala('Conta de luz 110 reais no pix')" class="text-xs px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] hover:border-emerald-500 transition-all">
+          💡 "Luz 110 no pix"
+        </button>
+      </div>
+
+      <!-- CARD DE CONFIRMAÇÃO AUTOMÁTICA DO LANÇAMENTO -->
+      <div id="card-preview" class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 space-y-2.5">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Tipo</label>
+            <select id="campo-tipo" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-semibold">
+              <option value="Despesa">📉 Despesa (Gasto)</option>
+              <option value="Receita">📈 Receita (Entrada)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Valor (R$)</label>
+            <input id="campo-valor" type="number" step="0.01" placeholder="0.00" oninput="atualizarAlertaPreview()"
+              class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-bold font-mono text-emerald-500" />
+          </div>
+
+          <div class="col-span-2">
+            <label class="text-xs text-[var(--muted-foreground)] block mb-1">Categoria da Planilha</label>
+            <select id="campo-categoria" onchange="atualizarAlertaPreview()" class="w-full bg-[var(--card)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs font-semibold">
+              <option value="Alimentação / Comer Fora">🍽️ Alimentação / Comer Fora</option>
+              <option value="Supermercado">🛒 Supermercado</option>
+              <option value="Combustível">⛽ Combustível</option>
+              <option value="Ônibus/Táxi/Uber">🚗 Ônibus / Táxi / Uber</option>
+              <option value="Reparos / Manutenção">🔧 Reparos / Manutenção Veicular</option>
+              <option value="Conta de Luz">💡 Conta de Luz</option>
+              <option value="Conta de Água">💧 Conta de Água</option>
+              <option value="Internet">🌐 Internet</option>
+              <option value="Telefone">📱 Telefone</option>
+              <option value="Aluguel/Parcelas do Imóvel">🏠 Aluguel / Parcelas do Imóvel</option>
+              <option value="Parcelamento do Carro">🚘 Parcelamento do Carro</option>
+              <option value="Seguro do Carro+MOTO">🛡️ Seguro do Carro + Moto</option>
+              <option value="Plano de Saúde">🏥 Plano de Saúde</option>
+              <option value="Farmácia / Consultas">💊 Farmácia / Consultas</option>
+              <option value="Educação">🎓 Educação</option>
+              <option value="Suprimentos Pessoais">🧴 Suprimentos Pessoais</option>
+              <option value="Roupas">👕 Roupas</option>
+              <option value="Passeios / Lazer">🎉 Passeios / Lazer</option>
+              <option value="Netflix + Crunchyroll / Streamings">🎬 Netflix + Crunchyroll / Streamings</option>
+              <option value="Investimentos / Reserva">📈 Investimentos / Reserva</option>
+              <option value="Dívidas / Acordos">📑 Dívidas / Acordos</option>
+              <option value="Outros Gastos">📦 Outros Gastos</option>
+              <option value="Salário">💵 Salário (Receita)</option>
+              <option value="Vale Alimentação (Recarga)">💳 Vale Alimentação - Recarga (Receita)</option>
+              <option value="Renda extra">🚀 Renda Extra (Receita)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Seletor de Forma de Pagamento (1 Toque) -->
+        <div>
+          <label class="text-xs text-[var(--muted-foreground)] block mb-1">Forma de Pagamento</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5" id="grupo-pgto">
+            <button type="button" onclick="selecionarPgto('PIX')" data-pgto="PIX" class="chip-pgto selected px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
+              💠 PIX
+            </button>
+            <button type="button" onclick="selecionarPgto('Cartão de Crédito')" data-pgto="Cartão de Crédito" class="chip-pgto px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
+              💳 Cartão Crédito
+            </button>
+            <button type="button" onclick="selecionarPgto('Cartão de Débito')" data-pgto="Cartão de Débito" class="chip-pgto px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
+              🏧 Cartão Débito
+            </button>
+            <button type="button" onclick="selecionarPgto('Vale Alimentação')" data-pgto="Vale Alimentação" class="chip-pgto px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-center transition-all">
+              🍽️ Vale Alimentação
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2 items-center justify-between pt-1">
+          <input id="campo-descricao" type="text" placeholder="Descrição (ex: Abastecimento Posto)"
+            class="w-full sm:w-2/3 bg-[var(--card)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs" />
+          <button onclick="salvarLancamento()" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer">
+            ✅ Confirmar e Gravar na Planilha
+          </button>
+        </div>
+
+        <!-- Alerta de Impacto no Teto da Categoria -->
+        <div id="alerta-impacto-teto" class="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hidden">
+        </div>
+      </div>
+    </div>
+
+    <!-- NAVEGAÇÃO ENTRE ABAS: TETOS DE CATEGORIA vs EXTRATO DE LANÇAMENTOS -->
+    <div class="flex bg-[var(--card)] p-1 rounded-xl border border-[var(--border)] text-xs font-semibold gap-1">
+      <button id="tab-btn-tetos" onclick="trocarAba('tetos')" class="nav-pill active flex-1 py-2 rounded-lg transition-all text-center">
+        🎯 Tetos & Metas por Categoria
+      </button>
+      <button id="tab-btn-extrato" onclick="trocarAba('extrato')" class="nav-pill flex-1 py-2 rounded-lg text-[var(--muted-foreground)] transition-all text-center">
+        📋 Extrato da Planilha (<span id="count-lanc">12</span>)
+      </button>
+    </div>
+
+    <!-- ABA 1: TETOS E METAS POR CATEGORIA COM ALERTA VISUAL -->
+    <div id="aba-tetos" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-sm">Controle de Teto por Categoria</h3>
+          <p class="text-xs text-[var(--muted-foreground)]">Verde: dentro da meta • Amarelo: acima de 75% • Vermelho: teto estourado</p>
+        </div>
+      </div>
+      <div id="lista-tetos" class="space-y-2.5"></div>
+    </div>
+
+    <!-- ABA 2: EXTRATO DE LANÇAMENTOS COM FILTRO POR FORMA DE PAGAMENTO -->
+    <div id="aba-extrato" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 shadow-sm space-y-3 hidden">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 class="font-bold text-sm">Histórico Gravado na Planilha</h3>
+        <div class="flex gap-1 text-xs">
+          <button onclick="filtrarExtrato('TODOS')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Todos</button>
+          <button onclick="filtrarExtrato('PIX')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">PIX</button>
+          <button onclick="filtrarExtrato('Cartão de Crédito')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Crédito</button>
+          <button onclick="filtrarExtrato('Cartão de Débito')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">Débito</button>
+          <button onclick="filtrarExtrato('Vale Alimentação')" class="px-2 py-1 rounded-lg bg-[var(--background)] border border-[var(--border)] font-medium">VA</button>
+        </div>
+      </div>
+      <div id="lista-extrato" class="space-y-2"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let API_BASE = "https://grant-forms-hotels-december.trycloudflare.com/api/lancamentos";
+    if (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.hostname.startsWith("192.168.")) {
+      API_BASE = window.location.origin + "/api/lancamentos";
+    }
+
+    async function descobrirEndpointAtivo() {
+      try {
+        const r = await fetch("./config_api.json?t=" + Date.now(), { cache: "no-store" });
+        if (r.ok) {
+          const cfg = await r.json();
+          if (cfg.api_url && !window.location.hostname.startsWith("192.168.") && window.location.hostname !== "127.0.0.1") {
+            API_BASE = cfg.api_url;
+          }
+        }
+      } catch (e) {}
+    }
+
+    const TETOS_CATEGORIAS = {
+      "Aluguel/Parcelas do Imóvel": { teto: 1535.00, icone: "🏠" },
+      "Parcelamento do Carro": { teto: 1413.00, icone: "🚘" },
+      "Supermercado": { teto: 850.00, icone: "🛒" },
+      "Alimentação / Comer Fora": { teto: 300.00, icone: "🍽️" },
+      "Combustível": { teto: 400.00, icone: "⛽" },
+      "Plano de Saúde": { teto: 500.00, icone: "🏥" },
+      "Educação": { teto: 500.00, icone: "🎓" },
+      "Conta de Luz": { teto: 110.00, icone: "💡" },
+      "Internet": { teto: 110.00, icone: "🌐" },
+      "Conta de Água": { teto: 70.00, icone: "💧" },
+      "Reparos / Manutenção": { teto: 70.00, icone: "🔧" },
+      "Seguro do Carro+MOTO": { teto: 40.00, icone: "🛡️" },
+      "Telefone": { teto: 30.00, icone: "📱" },
+      "Netflix + Crunchyroll / Streamings": { teto: 80.00, icone: "🎬" },
+      "Passeios / Lazer": { teto: 150.00, icone: "🎉" },
+      "Farmácia / Consultas": { teto: 100.00, icone: "💊" },
+      "Ônibus/Táxi/Uber": { teto: 80.00, icone: "🚗" },
+      "Suprimentos Pessoais": { teto: 100.00, icone: "🧴" },
+      "Roupas": { teto: 100.00, icone: "👕" },
+      "Investimentos / Reserva": { teto: 1000.00, icone: "📈" },
+      "Dívidas / Acordos": { teto: 2700.00, icone: "📑" },
+      "Outros Gastos": { teto: 300.00, icone: "📦" }
+    };
+
+    const DADOS_PADRAO = [
+      { id: 12, data: "08/11/2026", tipo: "Despesa", categoria: "Dívidas / Acordos", descricao: "Pagamento de Parcelas / Obrigações", formaPagamento: "PIX", valor: 2590.00 },
+      { id: 11, data: "08/11/2026", tipo: "Despesa", categoria: "Netflix + Crunchyroll / Streamings", descricao: "Assinaturas Netflix + Crunchyroll", formaPagamento: "Cartão de Crédito", valor: 80.00 },
+      { id: 10, data: "08/11/2026", tipo: "Despesa", categoria: "Educação", descricao: "Mensalidade Educação / Curso", formaPagamento: "PIX", valor: 480.00 },
+      { id: 9, data: "08/11/2026", tipo: "Despesa", categoria: "Plano de Saúde", descricao: "Mensalidade Plano de Saúde", formaPagamento: "PIX", valor: 470.00 },
+      { id: 8, data: "08/11/2026", tipo: "Despesa", categoria: "Seguro do Carro+MOTO", descricao: "Proteção / Seguro Veicular", formaPagamento: "Cartão de Crédito", valor: 40.00 },
+      { id: 7, data: "08/11/2026", tipo: "Despesa", categoria: "Parcelamento do Carro", descricao: "Parcela Financiamento Carro", formaPagamento: "PIX", valor: 1413.00 },
+      { id: 6, data: "08/11/2026", tipo: "Despesa", categoria: "Internet", descricao: "Mensalidade Internet Fibra", formaPagamento: "PIX", valor: 110.00 },
+      { id: 5, data: "08/11/2026", tipo: "Despesa", categoria: "Telefone", descricao: "Plano de Celular", formaPagamento: "Cartão de Crédito", valor: 30.00 },
+      { id: 4, data: "08/11/2026", tipo: "Despesa", categoria: "Conta de Água", descricao: "Fatura de Água do Mês", formaPagamento: "PIX", valor: 68.00 },
+      { id: 3, data: "08/11/2026", tipo: "Despesa", categoria: "Aluguel/Parcelas do Imóvel", descricao: "Parcela do Imóvel / Aluguel", formaPagamento: "PIX", valor: 1535.00 },
+      { id: 2, data: "08/11/2026", tipo: "Receita", categoria: "Vale Alimentação (Recarga)", descricao: "Recarga Vale Alimentação (450 + 240)", formaPagamento: "Vale Alimentação", valor: 690.00 },
+      { id: 1, data: "08/11/2026", tipo: "Receita", categoria: "Salário", descricao: "Salário Base Mensal", formaPagamento: "PIX", valor: 10000.00 }
+    ];
+
+    let lancamentos = JSON.parse(localStorage.getItem("vozfin_lancamentos_cache")) || DADOS_PADRAO;
+    let filaPendentes = JSON.parse(localStorage.getItem("vozfin_fila_pendentes")) || [];
+    let formaSelecionada = "PIX";
+    let filtroAtual = "TODOS";
+    let reconhecimento = null;
+    let gravando = false;
+
+    function formatarBRL(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    async function sincronizarAgora() {
+      await descobrirEndpointAtivo();
+      try {
+        // Se houver lançamentos feitos no celular enquanto o PC estava desligado, envia agora
+        if (filaPendentes.length > 0) {
+          for (const item of [...filaPendentes]) {
+            const rPost = await fetch(API_BASE, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(item)
+            });
+            if (rPost.ok) {
+              filaPendentes = filaPendentes.filter(p => p.id !== item.id);
+              localStorage.setItem("vozfin_fila_pendentes", JSON.stringify(filaPendentes));
+            }
+          }
+        }
+
+        const resp = await fetch(API_BASE, { cache: "no-store" });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.status === "ok" && Array.isArray(data.lancamentos)) {
+            lancamentos = data.lancamentos;
+            localStorage.setItem("vozfin_lancamentos_cache", JSON.stringify(lancamentos));
+            document.getElementById("sheet-badge").innerText = "Google Drive Sincronizado ✓";
+            renderizarTudo();
+          }
+        }
+      } catch (e) {
+        if (filaPendentes.length > 0) {
+          document.getElementById("sheet-badge").innerText = `Salvo no Celular (${filaPendentes.length} pendente)`;
+        }
+      }
+    }
+
+    function selecionarPgto(forma) {
+      formaSelecionada = forma;
+      document.querySelectorAll(".chip-pgto").forEach(btn => {
+        if (btn.getAttribute("data-pgto") === forma) {
+          btn.classList.add("selected");
+        } else {
+          btn.classList.remove("selected");
+        }
+      });
+      atualizarAlertaPreview();
+    }
+
+    function interpretarFrase(texto) {
+      if (!texto || !texto.trim()) return;
+      const t = texto.toLowerCase().trim();
+
+      let valorEncontrado = null;
+      const regexDecimalFalado = /(\d+)\s*(?:reais\s*)?e\s*(\d{1,2})\b/i;
+      const matchFalado = t.match(regexDecimalFalado);
+      if (matchFalado) {
+        const centavos = matchFalado[2].length === 1 ? matchFalado[2] + "0" : matchFalado[2];
+        valorEncontrado = parseFloat(matchFalado[1] + "." + centavos);
+      } else {
+        const matchNum = t.match(/(\d+(?:[.,]\d{1,2})?)/);
+        if (matchNum) {
+          valorEncontrado = parseFloat(matchNum[1].replace(",", "."));
+        }
+      }
+      if (valorEncontrado !== null && !isNaN(valorEncontrado)) {
+        document.getElementById("campo-valor").value = valorEncontrado.toFixed(2);
+      }
+
+      if (t.includes("vale") || (t.includes("alimentação") && (t.includes("no ") || t.includes("cartão") || t.includes("va")))) {
+        selecionarPgto("Vale Alimentação");
+      } else if (t.includes("crédito") || t.includes("credito")) {
+        selecionarPgto("Cartão de Crédito");
+      } else if (t.includes("débito") || t.includes("debito")) {
+        selecionarPgto("Cartão de Débito");
+      } else if (t.includes("pix")) {
+        selecionarPgto("PIX");
+      }
+
+      if (t.includes("recebi") || t.includes("salário") || t.includes("salario") || t.includes("renda extra") || t.includes("entrou") || t.includes("reembolso")) {
+        document.getElementById("campo-tipo").value = "Receita";
+      } else {
+        document.getElementById("campo-tipo").value = "Despesa";
+      }
+
+      const mapaCategorias = [
+        { cat: "Combustível", termos: ["combustível", "combustivel", "gasolina", "etanol", "álcool", "alcool", "posto", "abasteci", "diesel"] },
+        { cat: "Supermercado", termos: ["supermercado", "mercado", "feira", "atacadão", "atacadao", "assai", "assaí", "compras do mês", "açougue"] },
+        { cat: "Alimentação / Comer Fora", termos: ["almoço", "almoco", "jantar", "lanche", "padaria", "restaurante", "ifood", "pizza", "hambúrguer", "comer", "café", "alimentação", "alimentacao"] },
+        { cat: "Ônibus/Táxi/Uber", termos: ["uber", "99", "táxi", "taxi", "ônibus", "onibus", "passagem", "metrô"] },
+        { cat: "Reparos / Manutenção", termos: ["oficina", "mecânico", "mecanico", "pneu", "óleo", "oleo", "reparo", "manutenção", "manutencao"] },
+        { cat: "Conta de Luz", termos: ["luz", "energia", "celpe", "neoenergia", "enel"] },
+        { cat: "Conta de Água", termos: ["água", "agua", "compesa", "cagece", "saneamento"] },
+        { cat: "Internet", termos: ["internet", "fibra", "wi-fi", "wifi"] },
+        { cat: "Telefone", termos: ["telefone", "celular", "tim", "vivo", "claro", "recarga"] },
+        { cat: "Aluguel/Parcelas do Imóvel", termos: ["aluguel", "imóvel", "imovel", "condomínio", "condominio"] },
+        { cat: "Parcelamento do Carro", termos: ["parcela do carro", "financiamento do carro"] },
+        { cat: "Seguro do Carro+MOTO", termos: ["seguro"] },
+        { cat: "Farmácia / Consultas", termos: ["farmácia", "farmacia", "remédio", "remedio", "médico", "medico", "consulta", "exame", "dentista"] },
+        { cat: "Plano de Saúde", termos: ["plano de saúde", "plano de saude", "unimed", "hapvida"] },
+        { cat: "Educação", termos: ["educação", "educacao", "curso", "faculdade", "escola", "livro"] },
+        { cat: "Roupas", termos: ["roupa", "roupas", "camisa", "calça", "tênis", "sapato"] },
+        { cat: "Suprimentos Pessoais", termos: ["barbeiro", "cabelo", "perfume", "higiene", "suprimentos"] },
+        { cat: "Netflix + Crunchyroll / Streamings", termos: ["netflix", "crunchyroll", "spotify", "streaming", "assinatura"] },
+        { cat: "Passeios / Lazer", termos: ["passeio", "cinema", "lazer", "bar", "viagem", "show", "ingresso"] },
+        { cat: "Investimentos / Reserva", termos: ["investimento", "investi", "poupança", "reserva", "tesouro", "cdb", "cripto"] },
+        { cat: "Dívidas / Acordos", termos: ["dívida", "divida", "acordo", "empréstimo"] },
+        { cat: "Renda extra", termos: ["renda extra", "freela", "bico", "comissão"] },
+        { cat: "Salário", termos: ["salário", "salario", "pagamento mensal"] }
+      ];
+
+      for (const item of mapaCategorias) {
+        if (item.termos.some(termo => t.includes(termo))) {
+          document.getElementById("campo-categoria").value = item.cat;
+          break;
+        }
+      }
+
+      document.getElementById("campo-descricao").value = texto.charAt(0).toUpperCase() + texto.slice(1);
+      atualizarAlertaPreview();
+    }
+
+    function simularFala(frase) {
+      document.getElementById("input-frase-voz").value = frase;
+      interpretarFrase(frase);
+    }
+
+    function atualizarAlertaPreview() {
+      const box = document.getElementById("alerta-impacto-teto");
+      const tipo = document.getElementById("campo-tipo").value;
+      const cat = document.getElementById("campo-categoria").value;
+      const val = parseFloat(document.getElementById("campo-valor").value) || 0;
+
+      if (tipo === "Despesa" && TETOS_CATEGORIAS[cat] && val > 0) {
+        const teto = TETOS_CATEGORIAS[cat].teto;
+        const gastoAtual = lancamentos
+          .filter(l => l.tipo === "Despesa" && l.categoria === cat)
+          .reduce((acc, cur) => acc + Number(cur.valor), 0);
+        const novoTotal = gastoAtual + val;
+        const pct = teto > 0 ? (novoTotal / teto) * 100 : 0;
+        const restante = teto - novoTotal;
+
+        box.classList.remove("hidden", "bg-emerald-500/10", "text-emerald-500", "border-emerald-500/20", "bg-amber-500/10", "text-amber-500", "border-amber-500/20", "bg-rose-500/10", "text-rose-500", "border-rose-500/20");
+
+        if (pct >= 100) {
+          box.classList.add("bg-rose-500/10", "text-rose-500", "border-rose-500/20");
+          box.innerHTML = `⚠️ <strong>Alerta de Teto:</strong> Com este gasto de ${formatarBRL(val)}, a categoria <strong>${cat}</strong> chegará a <strong>${pct.toFixed(0)}%</strong> da meta (${formatarBRL(Math.abs(restante))} acima do teto de ${formatarBRL(teto)}).`;
+        } else if (pct >= 75) {
+          box.classList.add("bg-amber-500/10", "text-amber-500", "border-amber-500/20");
+          box.innerHTML = `⚡ <strong>Atenção à Meta:</strong> A categoria <strong>${cat}</strong> atingirá <strong>${pct.toFixed(0)}%</strong> do teto mensal. Restarão ${formatarBRL(restante)}.`;
+        } else {
+          box.classList.add("bg-emerald-500/10", "text-emerald-500", "border-emerald-500/20");
+          box.innerHTML = `✓ <strong>Dentro da Meta:</strong> A categoria <strong>${cat}</strong> ficará em <strong>${pct.toFixed(0)}%</strong> do teto (${formatarBRL(restante)} livres de ${formatarBRL(teto)}).`;
+        }
+      } else {
+        box.classList.add("hidden");
+      }
+    }
+
+    function alternarGravacaoVoz() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById("btn-mic");
+      const lbl = document.getElementById("mic-label");
+
+      if (!SpeechRecognition) {
+        alert("Use o microfone do teclado do celular no campo abaixo!");
+        document.getElementById("input-frase-voz").focus();
+        return;
+      }
+
+      if (gravando && reconhecimento) {
+        reconhecimento.stop();
+        return;
+      }
+
+      reconhecimento = new SpeechRecognition();
+      reconhecimento.lang = "pt-BR";
+      reconhecimento.interimResults = true;
+      reconhecimento.maxAlternatives = 1;
+
+      reconhecimento.onstart = () => {
+        gravando = true;
+        btn.classList.add("mic-recording");
+        lbl.innerText = "Ouvindo... Fale agora";
+      };
+
+      reconhecimento.onresult = (event) => {
+        const transcricao = Array.from(event.results)
+          .map(r => r[0].transcript)
+          .join("");
+        document.getElementById("input-frase-voz").value = transcricao;
+        interpretarFrase(transcricao);
+      };
+
+      reconhecimento.onend = () => {
+        gravando = false;
+        btn.classList.remove("mic-recording");
+        lbl.innerText = "Falar Agora";
+        const autoSave = document.getElementById("chk-autosave").checked;
+        const val = parseFloat(document.getElementById("campo-valor").value);
+        if (autoSave && val > 0) {
+          salvarLancamento();
+        }
+      };
+
+      reconhecimento.onerror = () => {
+        gravando = false;
+        btn.classList.remove("mic-recording");
+        lbl.innerText = "Falar Agora";
+      };
+
+      reconhecimento.start();
+    }
+
+    async function salvarLancamento() {
+      const valor = parseFloat(document.getElementById("campo-valor").value);
+      if (!valor || valor <= 0) {
+        alert("Fale ou digite um valor maior que zero.");
+        return;
+      }
+
+      const tipo = document.getElementById("campo-tipo").value;
+      const categoria = document.getElementById("campo-categoria").value;
+      const descricao = document.getElementById("campo-descricao").value.trim() || categoria;
+      const agora = new Date();
+      const dataStr = agora.toLocaleDateString("pt-BR");
+
+      const novoItem = {
+        id: Date.now(),
+        data: dataStr,
+        tipo: tipo,
+        categoria: categoria,
+        descricao: descricao,
+        formaPagamento: formaSelecionada,
+        valor: valor,
+        origem: "Voz Mobile"
+      };
+
+      document.getElementById("input-frase-voz").value = "";
+      document.getElementById("campo-valor").value = "";
+      document.getElementById("campo-descricao").value = "";
+      document.getElementById("alerta-impacto-teto").classList.add("hidden");
+
+      try {
+        document.getElementById("sheet-badge").innerText = "Gravando na Planilha...";
+        const resp = await fetch(API_BASE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(novoItem)
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.lancamentos) {
+            lancamentos = data.lancamentos;
+          } else {
+            lancamentos.unshift(novoItem);
+          }
+          localStorage.setItem("vozfin_lancamentos_cache", JSON.stringify(lancamentos));
+          document.getElementById("sheet-badge").innerText = "Salvo na Planilha Google ✓";
+        } else {
+          throw new Error("Offline");
+        }
+      } catch (e) {
+        lancamentos.unshift(novoItem);
+        filaPendentes.push(novoItem);
+        localStorage.setItem("vozfin_lancamentos_cache", JSON.stringify(lancamentos));
+        localStorage.setItem("vozfin_fila_pendentes", JSON.stringify(filaPendentes));
+        document.getElementById("sheet-badge").innerText = "Salvo (Sincroniza ao conectar)";
+      }
+
+      renderizarTudo();
+    }
+
+    async function excluirLancamento(id) {
+      lancamentos = lancamentos.filter(l => l.id !== id);
+      localStorage.setItem("vozfin_lancamentos_cache", JSON.stringify(lancamentos));
+      renderizarTudo();
+      try {
+        await fetch(API_BASE + "/" + id, { method: "DELETE" });
+      } catch (e) {}
+    }
+
+    function renderizarTudo() {
+      let totalReceitas = 0;
+      let totalDespesas = 0;
+      let somaPgto = {
+        "PIX": 0,
+        "Cartão de Crédito": 0,
+        "Cartão de Débito": 0,
+        "Vale Alimentação": 0
+      };
+      let recargaVA = 0;
+
+      lancamentos.forEach(l => {
+        const v = Number(l.valor) || 0;
+        if (l.tipo === "Receita") {
+          totalReceitas += v;
+          if (l.formaPagamento === "Vale Alimentação" || l.categoria.includes("Vale Alimentação")) {
+            recargaVA += v;
+          }
+        } else {
+          totalDespesas += v;
+          if (somaPgto[l.formaPagamento] !== undefined) {
+            somaPgto[l.formaPagamento] += v;
+          }
+        }
+      });
+
+      const receitasConta = totalReceitas - recargaVA;
+      const saidasConta = somaPgto["PIX"] + somaPgto["Cartão de Débito"];
+      const saldoLivreConta = receitasConta - saidasConta;
+
+      document.getElementById("kpi-saldo-livre").innerText = formatarBRL(saldoLivreConta);
+      document.getElementById("kpi-receitas").innerText = formatarBRL(totalReceitas);
+      document.getElementById("kpi-despesas").innerText = formatarBRL(totalDespesas);
+
+      const metaGlobal = Object.values(TETOS_CATEGORIAS).reduce((a, b) => a + b.teto, 0);
+      const pctGlobal = metaGlobal > 0 ? (totalDespesas / metaGlobal) * 100 : 0;
+      document.getElementById("kpi-meta-global").innerText = `${pctGlobal.toFixed(1)}% de ${formatarBRL(metaGlobal)}`;
+      document.getElementById("kpi-bar-global").style.width = `${Math.min(100, pctGlobal)}%`;
+
+      document.getElementById("val-pix").innerText = formatarBRL(somaPgto["PIX"]);
+      document.getElementById("pct-pix").innerText = `${((somaPgto["PIX"] / 7500) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-credito").innerText = formatarBRL(somaPgto["Cartão de Crédito"]);
+      document.getElementById("pct-credito").innerText = `${((somaPgto["Cartão de Crédito"] / 2500) * 100).toFixed(0)}%`;
+
+      document.getElementById("val-debito").innerText = formatarBRL(somaPgto["Cartão de Débito"]);
+      document.getElementById("pct-debito").innerText = `${((somaPgto["Cartão de Débito"] / 1500) * 100).toFixed(0)}%`;
+
+      const baseVA = recargaVA > 0 ? recargaVA : 690;
+      const livreVA = baseVA - somaPgto["Vale Alimentação"];
+      document.getElementById("val-va").innerText = formatarBRL(somaPgto["Vale Alimentação"]);
+      document.getElementById("pct-va").innerText = `${((somaPgto["Vale Alimentação"] / baseVA) * 100).toFixed(0)}%`;
+      document.getElementById("sub-va").innerText = `Livre: ${formatarBRL(livreVA)}`;
+
+      const containerTetos = document.getElementById("lista-tetos");
+      containerTetos.innerHTML = "";
+
+      Object.entries(TETOS_CATEGORIAS).forEach(([catNome, cfg]) => {
+        const gastoCat = lancamentos
+          .filter(l => l.tipo === "Despesa" && l.categoria === catNome)
+          .reduce((acc, cur) => acc + Number(cur.valor), 0);
+        const pct = cfg.teto > 0 ? (gastoCat / cfg.teto) * 100 : 0;
+        const saldoRestante = cfg.teto - gastoCat;
+
+        let corBarra = "bg-emerald-500";
+        let badgeStatus = `<span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 font-semibold">Livre: ${formatarBRL(saldoRestante)}</span>`;
+        if (pct >= 100) {
+          corBarra = "bg-rose-500";
+          badgeStatus = `<span class="text-xs px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500 font-bold">Estourado em ${formatarBRL(Math.abs(saldoRestante))}</span>`;
+        } else if (pct >= 75) {
+          corBarra = "bg-amber-500";
+          badgeStatus = `<span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 font-semibold">Atenção • Resta ${formatarBRL(saldoRestante)}</span>`;
+        }
+
+        const itemHTML = `
+          <div class="bg-[var(--background)] p-3 rounded-xl border border-[var(--border)]">
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="font-bold">${cfg.icone} ${catNome}</span>
+              ${badgeStatus}
+            </div>
+            <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)] mb-1.5 font-mono">
+              <span>Gasto: <strong class="text-[var(--foreground)]">${formatarBRL(gastoCat)}</strong> de ${formatarBRL(cfg.teto)}</span>
+              <span>${pct.toFixed(0)}%</span>
+            </div>
+            <div class="w-full bg-[var(--card)] h-2 rounded-full overflow-hidden border border-[var(--border)]">
+              <div class="${corBarra} h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, pct)}%"></div>
+            </div>
+          </div>
+        `;
+        containerTetos.insertAdjacentHTML("beforeend", itemHTML);
+      });
+
+      document.getElementById("count-lanc").innerText = lancamentos.length;
+      const containerExtrato = document.getElementById("lista-extrato");
+      containerExtrato.innerHTML = "";
+
+      const filtrados = filtroAtual === "TODOS"
+        ? lancamentos
+        : lancamentos.filter(l => l.formaPagamento === filtroAtual);
+
+      filtrados.forEach(l => {
+        const isRec = l.tipo === "Receita";
+        const corValor = isRec ? "text-emerald-500" : "text-rose-500";
+        const sinal = isRec ? "+" : "-";
+        const iconeCat = (TETOS_CATEGORIAS[l.categoria] && TETOS_CATEGORIAS[l.categoria].icone) || (isRec ? "💰" : "💸");
+
+        const rowHTML = `
+          <div class="bg-[var(--background)] p-3 rounded-xl border border-[var(--border)] flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-center text-sm">
+                ${iconeCat}
+              </div>
+              <div>
+                <div class="text-xs font-bold">${l.descricao}</div>
+                <div class="text-xs text-[var(--muted-foreground)]">
+                  ${l.categoria} • <span class="font-semibold text-sky-400">${l.formaPagamento}</span> • ${l.data}
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold font-mono ${corValor}">${sinal} ${formatarBRL(l.valor)}</span>
+              <button onclick="excluirLancamento(${l.id})" class="text-xs text-[var(--muted-foreground)] hover:text-rose-500 px-1.5 py-0.5 cursor-pointer" title="Excluir da planilha">✕</button>
+            </div>
+          </div>
+        `;
+        containerExtrato.insertAdjacentHTML("beforeend", rowHTML);
+      });
+    }
+
+    function trocarAba(aba) {
+      if (aba === "tetos") {
+        document.getElementById("aba-tetos").classList.remove("hidden");
+        document.getElementById("aba-extrato").classList.add("hidden");
+        document.getElementById("tab-btn-tetos").classList.add("active");
+        document.getElementById("tab-btn-extrato").classList.remove("active");
+      } else {
+        document.getElementById("aba-tetos").classList.add("hidden");
+        document.getElementById("aba-extrato").classList.remove("hidden");
+        document.getElementById("tab-btn-extrato").classList.add("active");
+        document.getElementById("tab-btn-tetos").classList.remove("active");
+      }
+    }
+
+    function filtrarExtrato(forma) {
+      filtroAtual = forma;
+      renderizarTudo();
+    }
+
+    function exportarCSV() {
+      let csv = "\uFEFFID;Data;Tipo;Categoria;Descricao;Forma de Pagamento;Valor\n";
+      lancamentos.forEach(l => {
+        csv += `${l.id};${l.data};${l.tipo};"${l.categoria}";"${l.descricao}";"${l.formaPagamento}";${String(l.valor).replace(".", ",")}\n`;
+      });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "lancamentos_gastos_voz.csv";
+      a.click();
+    }
+
+    renderizarTudo();
+    sincronizarAgora();
+    setInterval(sincronizarAgora, 6000);
+  </script>
+</body>
+</html>
