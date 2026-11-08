@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v4-strict12';
+const CACHE_NAME = 'vozfin-v5-instant-delete';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -12,11 +12,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network First para todo HTML e API (nunca fica preso em versão velha)
+// Network First absoluto para garantir sempre a versão mais recente em tempo real
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
-  // Se for navegação ou HTML, vai direto na rede para pegar sempre o mais recente
   if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(
       fetch(event.request)
@@ -30,7 +29,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Para outros assets, tenta rede primeiro e depois cache
   event.respondWith(
     fetch(event.request)
       .then((resp) => {
