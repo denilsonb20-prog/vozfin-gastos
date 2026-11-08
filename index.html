@@ -641,18 +641,20 @@
     // =========================================================================
     // ENDPOINTS DE SINCRONIZAÇÃO EM TEMPO REAL (CELULAR E COMPUTADOR)
     // =========================================================================
-    const URL_TUNEL = "https://grant-forms-hotels-december.trycloudflare.com";
-    const ENDPOINTS_API = [
-      URL_TUNEL + "/api",
-      "http://127.0.0.1:8090/api",
-      "http://localhost:8090/api"
-    ];
+    const URL_TUNEL = "https://corners-technological-convert-annotated.trycloudflare.com";
+    const isLocal = window.location.hostname === "localhost" || 
+                    window.location.hostname === "127.0.0.1" || 
+                    !window.location.hostname;
+    const ENDPOINTS_API = isLocal
+      ? ["http://127.0.0.1:8090/api", "http://localhost:8090/api", URL_TUNEL + "/api"]
+      : [URL_TUNEL + "/api", "http://127.0.0.1:8090/api", "http://localhost:8090/api"];
 
     async function chamarAPI(rota, options = {}) {
       for (const base of ENDPOINTS_API) {
+        if (!base || base.startsWith("https:///")) continue;
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000);
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
           const res = await fetch(`${base}${rota}`, { ...options, signal: controller.signal });
           clearTimeout(timeoutId);
           if (res.ok) {
@@ -661,6 +663,50 @@
         } catch (e) {}
       }
       return null;
+    }
+
+    // =========================================================================
+    // FILA DE PENDENTES E PROTEÇÃO DEFINITIVA CONTRA PERDAS DE DADOS
+    // =========================================================================
+    function obterPendentes() {
+      try {
+        const raw = localStorage.getItem("vozfin_pendentes_envio");
+        const arr = JSON.parse(raw || "[]");
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function salvarPendentes(lista) {
+      try {
+        localStorage.setItem("vozfin_pendentes_envio", JSON.stringify(lista));
+      } catch (e) {}
+    }
+
+    function adicionarPendente(item) {
+      const lista = obterPendentes();
+      if (!lista.some(p => String(p.id) === String(item.id))) {
+        lista.push(item);
+        salvarPendentes(lista);
+      }
+    }
+
+    function removerPendente(id) {
+      let lista = obterPendentes();
+      lista = lista.filter(p => String(p.id) !== String(id));
+      salvarPendentes(lista);
+    }
+
+    function limparExclusoesAntigas() {
+      let excluidos = [];
+      try {
+        excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]");
+      } catch (e) {}
+      // Mantém APENAS IDs estritamente numéricos para nunca bloquear descrições ou categorias no futuro!
+      const limpos = excluidos.filter(x => /^\d+$/.test(String(x).trim())).map(x => String(x).trim());
+      localStorage.setItem("vozfin_excluidos", JSON.stringify(limpos));
+      return new Set(limpos);
     }
 
     // =========================================================================
@@ -715,30 +761,26 @@
     }
 
     function resgatarTodosLancamentosDoAparelho() {
+      const pendentes = obterPendentes();
+      const excluidosSet = limparExclusoesAntigas();
+
       const chaves = [
         "vozfin_lancamentos_14",
         "vozfin_lancamentos_v4",
         "vozfin_lancamentos_v3",
-        "vozfin_lancamentos_v2",
-        "vozfin_lancamentos",
-        "vozfin_fila_v2",
-        "vozfin_gastos",
         "vozfin_backup_seguro"
       ];
 
-      // Varre dinamicamente qualquer outra chave existente no localStorage
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && !chaves.includes(k) && (k.toLowerCase().includes("lanc") || k.toLowerCase().includes("gasto") || k.toLowerCase().includes("item"))) {
-            chaves.push(k);
-          }
-        }
-      } catch (e) {}
-
       const consolidados = [];
-      const assinaturas = new Set();
-      const nomesValidos = CATEGORIAS_OFICIAIS.map(c => c.nome);
+      const idsVistos = new Set();
+      const nomesValidos = CATEGORIAS_OFICIAIS.map(cat => cat.nome);
+
+      for (const p of pendentes) {
+        if (!excluidosSet.has(String(p.id))) {
+          consolidados.push(p);
+          idsVistos.add(String(p.id));
+        }
+      }
 
       for (const k of chaves) {
         try {
@@ -751,17 +793,10 @@
             const val = parseFloat(item.valor || 0);
             if (val <= 0 && item.tipo !== "Receita") continue;
 
-            const sig = `${item.tipo || "Despesa"}|${val.toFixed(2)}|${(item.descricao || "").trim().toLowerCase()}|${(item.categoria || "").trim().toLowerCase()}`;
-            // Verifica se está na lista de itens excluídos permanentemente
-            let excluidos = [];
-            try { excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]"); } catch(e) {}
-            const excluidosSet = new Set(excluidos.map(x => String(x).toLowerCase()));
-            if (excluidosSet.has(String(item.id).toLowerCase()) || excluidosSet.has(sig.toLowerCase())) {
-              continue;
-            }
-
-            if (assinaturas.has(sig)) continue;
-            assinaturas.add(sig);
+            const idStr = String(item.id || "").trim();
+            if (idStr && excluidosSet.has(idStr)) continue;
+            if (idStr && idsVistos.has(idStr)) continue;
+            if (idStr) idsVistos.add(idStr);
 
             let cat = String(item.categoria || "OUTROS GASTOS").trim().toUpperCase();
             if (cat.includes("CART")) cat = "CARTÃO";
@@ -1119,30 +1154,58 @@
         origem: "Voz Mobile"
       };
 
+      // 1. Registra na fila de pendentes primeiro (garantia de que jamais se perderá em caso de queda de rede)
+      adicionarPendente(novo);
+
+      // 2. Adiciona imediatamente na memória ativa e persiste no localStorage
       lancamentos.unshift(novo);
       localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
 
+      // 3. Limpa formulário
       document.getElementById("campo-valor").value = "";
       document.getElementById("campo-desc").value = "";
       document.getElementById("input-frase-voz").value = "";
 
+      // 4. Renderiza tela com os novos dados em tempo real
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
       renderizarOsDoisGraficosPizza();
       atualizarAlertaPreview();
 
-      // Envia para o servidor e salva direto no Excel do Google Drive
-      atualizarStatusSync("Salvando na nuvem...", false);
+      // 5. Envia para o servidor e grava na planilha do Google Drive
+      atualizarStatusSync("Gravando no Google Drive...", false);
       const res = await chamarAPI("/lancamentos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(novo)
       });
+
       if (res && res.status === "ok") {
-        atualizarStatusSync("Sincronizado ✓", true);
+        // Gravado com sucesso no Excel! Remove da fila de pendentes
+        removerPendente(novo.id);
+
+        // Se o servidor retornou a lista atualizada com o ID definitivo do Excel, sincroniza
+        if (Array.isArray(res.lancamentos) && res.lancamentos.length > 0) {
+          const pendentes = obterPendentes();
+          const excluidosSet = limparExclusoesAntigas();
+          const daPlanilha = res.lancamentos.filter(l => !excluidosSet.has(String(l.id)));
+          lancamentos = [...pendentes, ...daPlanilha];
+          localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+          localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+          localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
+
+          atualizarKPIs();
+          renderizarTetos();
+          renderizarExtrato();
+          renderizarOsDoisGraficosPizza();
+        }
+        atualizarStatusSync("Salvo no Google Drive ✓", true);
       } else {
-        atualizarStatusSync("Salvo localmente ✓", true);
+        // Fica protegido na fila de pendentes para ser transmitido na próxima sincronização
+        atualizarStatusSync("Salvo no aparelho (pendente sincronização)", false);
       }
     }
 
@@ -1198,53 +1261,37 @@
     async function excluirLancamento(id) {
       if (!confirm("Remover este lançamento permanentemente?")) return;
 
-      const idStr = String(id);
+      const idStr = String(id).trim();
       const itemAlvo = lancamentos.find(l => String(l.id) === idStr);
 
-      // 1. Remove da memória ativa imediatamente
+      // 1. Remove da fila de pendentes se ainda estava lá
+      removerPendente(idStr);
+
+      // 2. Remove da memória ativa imediatamente
       lancamentos = lancamentos.filter(l => String(l.id) !== idStr);
 
-      // 2. Registra na lista permanente de exclusões para nunca mais ressuscitar
-      let excluidos = [];
-      try {
-        excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]");
-      } catch (e) {}
-      excluidos.push(idStr);
-      if (itemAlvo) {
-        const sig = `${itemAlvo.tipo || ""}|${Number(itemAlvo.valor || 0).toFixed(2)}|${(itemAlvo.descricao || "").trim().toLowerCase()}|${(itemAlvo.categoria || "").trim().toLowerCase()}`;
-        excluidos.push(sig);
+      // 3. Salva no localStorage imediatamente
+      localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+      localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
+
+      // 4. Registra nos excluídos exclusivamente por ID numérico (sem assinaturas em texto)
+      if (/^\d+$/.test(idStr)) {
+        let excluidos = [];
+        try { excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]"); } catch(e) {}
+        if (!excluidos.includes(idStr)) {
+          excluidos.push(idStr);
+          localStorage.setItem("vozfin_excluidos", JSON.stringify(excluidos));
+        }
       }
-      localStorage.setItem("vozfin_excluidos", JSON.stringify(excluidos));
 
-      // 3. Remove de todas as chaves de armazenamento local do navegador
-      const chavesLimpar = [
-        "vozfin_lancamentos_14",
-        "vozfin_lancamentos_v4",
-        "vozfin_lancamentos_v3",
-        "vozfin_lancamentos_v2",
-        "vozfin_lancamentos",
-        "vozfin_backup_seguro"
-      ];
-      chavesLimpar.forEach(k => {
-        try {
-          const raw = localStorage.getItem(k);
-          if (raw) {
-            let arr = JSON.parse(raw);
-            if (Array.isArray(arr)) {
-              arr = arr.filter(l => String(l.id) !== idStr);
-              localStorage.setItem(k, JSON.stringify(arr));
-            }
-          }
-        } catch (e) {}
-      });
-
-      // 4. Atualiza a tela imediatamente
+      // 5. Atualiza a tela imediatamente
       atualizarKPIs();
       renderizarTetos();
       renderizarExtrato();
       renderizarOsDoisGraficosPizza();
 
-      // 5. Exclui na planilha do Excel via backend imediatamente (via DELETE e POST robusto)
+      // 6. Exclui na planilha do Excel via backend imediatamente
       const payloadExclusao = {
         id: idStr,
         valor: itemAlvo ? itemAlvo.valor : 0,
@@ -1260,7 +1307,10 @@
       });
 
       if (resPost && resPost.status === "ok" && Array.isArray(resPost.lancamentos)) {
-        lancamentos = resPost.lancamentos;
+        const pendentes = obterPendentes();
+        const excluidosSet = limparExclusoesAntigas();
+        const daPlanilha = resPost.lancamentos.filter(l => !excluidosSet.has(String(l.id)));
+        lancamentos = [...pendentes, ...daPlanilha];
         localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
         atualizarKPIs();
         renderizarTetos();
@@ -1877,26 +1927,35 @@
     async function sincronizarTotalComServidor() {
       atualizarStatusSync("Sincronizando...", false);
 
+      // 1. Descarrega itens pendentes salvos no aparelho antes de puxar da nuvem
+      const pendentes = obterPendentes();
+      if (pendentes.length > 0) {
+        for (const p of [...pendentes]) {
+          try {
+            const resEnvio = await chamarAPI("/lancamentos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(p)
+            });
+            if (resEnvio && resEnvio.status === "ok") {
+              removerPendente(p.id);
+            }
+          } catch (e) {}
+        }
+      }
+
+      // 2. Consulta lançamentos atuais da planilha
       const res = await chamarAPI("/lancamentos");
       if (res && res.status === "ok" && Array.isArray(res.lancamentos)) {
         let daPlanilha = res.lancamentos;
 
-        // Filtra qualquer lançamento que o usuário tenha excluído
-        let excluidos = [];
-        try {
-          excluidos = JSON.parse(localStorage.getItem("vozfin_excluidos") || "[]");
-        } catch (e) {}
+        // Filtra exclusivamente IDs excluídos (limpos de qualquer assinatura de texto que bloqueie custos)
+        const excluidosSet = limparExclusoesAntigas();
+        daPlanilha = daPlanilha.filter(l => !excluidosSet.has(String(l.id)));
 
-        if (excluidos.length > 0) {
-          const excluidosSet = new Set(excluidos.map(x => String(x).toLowerCase()));
-          daPlanilha = daPlanilha.filter(l => {
-            const sig = `${l.tipo || ""}|${Number(l.valor || 0).toFixed(2)}|${(l.descricao || "").trim().toLowerCase()}|${(l.categoria || "").trim().toLowerCase()}`;
-            return !excluidosSet.has(String(l.id).toLowerCase()) && !excluidosSet.has(sig);
-          });
-        }
-
-        // A planilha é a fonte da verdade definitiva (sem auto-reenvio de faltantes)
-        lancamentos = daPlanilha;
+        // Mantém pendentes que ainda não conseguiram subir (garantia de nunca sumir)
+        const pendentesRestantes = obterPendentes();
+        lancamentos = [...pendentesRestantes, ...daPlanilha];
 
         // Salva cópia limpa em todas as chaves
         localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
@@ -1928,7 +1987,11 @@
 
         const agora = new Date();
         const horaStr = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-        atualizarStatusSync(`Nuvem OK (${horaStr})`, true);
+        const pendentesCount = pendentesRestantes.length;
+        const statusMsg = pendentesCount > 0 
+          ? `Nuvem OK (${pendentesCount} pendentes)` 
+          : `Nuvem OK (${horaStr})`;
+        atualizarStatusSync(statusMsg, true);
       } else {
         atualizarStatusSync("Modo Seguro", false);
         atualizarKPIs();
