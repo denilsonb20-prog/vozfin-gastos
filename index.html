@@ -2313,7 +2313,37 @@
         // =========================================================================
     // SINCRONIZAÇÃO COMPLETA BIDIRECIONAL COM PREVENÇÃO DE PERDA DE DADOS
     // =========================================================================
+    // =========================================================================
+    // SINCRONIZAÇÃO AUTOMÁTICA DE GASTOS FEITOS OFFLINE AO VOLTAR A INTERNET
+    // =========================================================================
+    async function sincronizarPendentesComFirestore() {
+      if (!dbFirestore) return;
+      const pendentes = obterPendentes();
+      if (pendentes.length > 0) {
+        try {
+          const batch = dbFirestore.batch();
+          pendentes.forEach(p => {
+            const ref = dbFirestore.collection("lancamentos").doc(String(p.id));
+            batch.set(ref, p);
+          });
+          await batch.commit();
+          pendentes.forEach(p => removerPendente(p.id));
+          const agoraH = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+          atualizarStatusSync(`Google Nuvem OK (${agoraH})`, true);
+          exibirToast(`✓ ${pendentes.length} gasto(s) salvo(s) na nuvem!`);
+        } catch(e) {
+          console.warn("Aviso ao sincronizar pendentes:", e);
+        }
+      }
+    }
+
+    window.addEventListener("online", () => {
+      sincronizarPendentesComFirestore();
+      sincronizarTotalComServidor();
+    });
+
     async function sincronizarTotalComServidor() {
+      await sincronizarPendentesComFirestore();
       atualizarStatusSync("Sincronizando...", false);
 
       // 1. Descarrega itens pendentes salvos no aparelho antes de puxar da nuvem
