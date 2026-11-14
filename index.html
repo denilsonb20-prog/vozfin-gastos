@@ -1469,7 +1469,8 @@
         return;
       }
 
-      const idx = lancamentos.findIndex(l => l.id == id);
+      const idStr = String(id).trim();
+      const idx = lancamentos.findIndex(l => String(l.id) === idStr);
       if (idx !== -1) {
         lancamentos[idx].valor = valor;
         lancamentos[idx].categoria = categoria;
@@ -1477,13 +1478,47 @@
         lancamentos[idx].formaPagamento = forma;
         lancamentos[idx].descricao = desc;
 
+        // 1. Salva em todas as chaves de persistência do celular
         localStorage.setItem("vozfin_lancamentos_14", JSON.stringify(lancamentos));
+        localStorage.setItem("vozfin_lancamentos_v4", JSON.stringify(lancamentos));
+        localStorage.setItem("vozfin_backup_seguro", JSON.stringify(lancamentos));
+
+        // 2. Se o item estiver na fila de pendentes offline, atualiza na fila também
+        let pendentes = obterPendentes();
+        const pIdx = pendentes.findIndex(p => String(p.id) === idStr);
+        if (pIdx !== -1) {
+          pendentes[pIdx].valor = valor;
+          pendentes[pIdx].categoria = categoria;
+          pendentes[pIdx].tipo = tipo;
+          pendentes[pIdx].formaPagamento = forma;
+          pendentes[pIdx].descricao = desc;
+          salvarPendentes(pendentes);
+        }
 
         atualizarKPIs();
         renderizarTetos();
         renderizarExtrato();
         renderizarOsDoisGraficosPizza();
 
+        // 3. Atualiza no Google Firestore (Nuvem 24/7)
+        if (dbFirestore) {
+          try {
+            dbFirestore.collection("lancamentos").doc(idStr).set({
+              valor: valor,
+              categoria: categoria,
+              tipo: tipo,
+              formaPagamento: forma,
+              descricao: desc
+            }, { merge: true }).then(() => {
+              const agoraH = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+              atualizarStatusSync(`Google Nuvem OK (${agoraH})`, true);
+            }).catch(e => {
+              console.warn("Aviso edição Firestore offline:", e);
+            });
+          } catch(e) {}
+        }
+
+        // 4. Atualiza no servidor backend / planilha do Google Drive
         atualizarStatusSync("Atualizando na nuvem...", false);
         const res = await chamarAPI("/lancamentos/editar", {
           method: "POST",
@@ -2881,6 +2916,15 @@
 
     // INICIALIZAÇÃO
     window.onload = () => {
+      // Registra Service Worker para suporte offline 100% autônomo
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").then((reg) => {
+          console.log("[SW] Registrado com sucesso, escopo:", reg.scope);
+        }).catch((err) => {
+          console.warn("[SW] Falha no registro do Service Worker:", err);
+        });
+      }
+
       // Inicializa Google Firebase Oficial automaticamente (independente de PC)
       try {
         const configSalva = localStorage.getItem("vozfin_firebase_config");
