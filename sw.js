@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vozfin-v20-offline-definitivo';
+const CACHE_NAME = 'vozfin-v21-offline-definitivo';
 
 const ASSETS_TO_CACHE = [
   './',
